@@ -47,16 +47,35 @@ export function createScene(canvas) {
   scene.add(rim);
 
   const warm = new THREE.PointLight(0xff7733, 30, 18, 1.8);
-  warm.position.set(0, 1.2, 3.2);
+  warm.position.set(0, 2, 27);
   scene.add(warm);
 
-  scene.add(new THREE.HemisphereLight(0xBFE3F2, 0x6B7F5E, 0.8));
+  scene.add(new THREE.HemisphereLight(0xBFE3F2, 0x6B5A44, 0.8));
 
   // --- Build once: hero sentinel + environment + fire system ---
   const hero = buildHero(PALETTE);
   scene.add(hero.group);
   const env = buildEnvironment(scene, PALETTE);
   const fire = buildFire(scene, PALETTE);
+
+  // Blob contact shadow under the hero (canvas radial gradient, follows hero in play).
+  const blobCanvas = document.createElement('canvas');
+  blobCanvas.width = 128;
+  blobCanvas.height = 128;
+  const bctx = blobCanvas.getContext('2d');
+  const bgrad = bctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  bgrad.addColorStop(0, 'rgba(0,0,0,0.4)');
+  bgrad.addColorStop(1, 'rgba(0,0,0,0)');
+  bctx.fillStyle = bgrad;
+  bctx.fillRect(0, 0, 128, 128);
+  const blobTex = new THREE.CanvasTexture(blobCanvas);
+  const blob = new THREE.Mesh(
+    new THREE.CircleGeometry(1.3, 24),
+    new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
+  );
+  blob.rotation.x = -Math.PI / 2;
+  blob.position.y = 0.02;
+  scene.add(blob);
 
   // Palm world offset (matches hero3d palmLight local position).
   const palmLocal = new THREE.Vector3(1.1, 2.1, 1.6);
@@ -72,7 +91,7 @@ export function createScene(canvas) {
     // --- Hero ---
     hero.group.position.set(
       state.hero.x,
-      1.6 + Math.sin(time * 2) * 0.08,
+      1.6 + Math.sin(time * 2) * 0.15,
       state.hero.z
     );
     // Lean / rotate toward movement when moving; keep facing +z when idle.
@@ -88,6 +107,8 @@ export function createScene(canvas) {
     }
     hero.palmLight.intensity = state.blasting ? 18 : 8;
     hero.group.visible = (view === 'play');
+    blob.position.set(state.hero.x, 0.02, state.hero.z);
+    blob.visible = (view === 'play');
 
     // --- Camera per view ---
     if (view === 'play') {
