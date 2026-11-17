@@ -123,8 +123,11 @@ export function runToWin(world, seed) {
 export function stageShot(name, world, seed = 86) {
   if (name === 'play') {
     const winRow = runToWin(world, seed);
-    run(world, seed, (state) => state.mission === 7 &&
-      state.cores.some((c) => c.boss && c.hp <= c.maxHp * 0.8));
+    // Stage at the mission-7 OPENING: the fire line is freshly seeded and
+    // still burning across the band. (The old boss-fight stop left the
+    // centre doused, so the camera saw no fire at all.) Boss at full hp.
+    run(world, seed, (state) => state.mission === 7 && state.phase === 'fly' &&
+      (state.flames || []).length > 100);
     if (world.state.mission < 7) {
       run(world, seed, (state) => state.mission === 7);
     }
