@@ -21,7 +21,7 @@ export function buildFire(scene, PALETTE) {
     color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 2.5,
   });
   const innerMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 2.8,
+    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 1.6,
   });
   const coreMat = new THREE.MeshStandardMaterial({
     color: PALETTE.skyWarm, emissive: PALETTE.skyWarm, emissiveIntensity: 3.5,
@@ -31,17 +31,17 @@ export function buildFire(scene, PALETTE) {
   });
   const flames = [];
   for (let i = 0; i < FLAME_COUNT; i += 1) {
-    const outer = new THREE.Mesh(new THREE.ConeGeometry(1.02, 1.65, 10), outerMat);
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.65, 10), outerMat);
     const mid = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.25, 10), midMat);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.65, 10), innerMat);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.30, 1.1, 10), innerMat);
     const core = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.5, 10), coreMat);
     const base = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20), baseMat);
     outer.add(mid);
     outer.add(base);
     mid.add(inner);
     mid.add(core);
-    inner.position.y = 0.68;
-    core.position.y = 0.82;
+    inner.position.y = 0.62;
+    core.position.y = 1.00;
     mid.position.y = 0.52;
     base.rotation.x = -Math.PI / 2;
     base.position.y = 0.02;

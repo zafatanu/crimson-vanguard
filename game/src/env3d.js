@@ -406,6 +406,58 @@ export function buildEnvironment(scene, PALETTE) {
     }
   }
 
+  // --- Foreground cluster near the start pad (south of hero, off its path) ---
+  // 3 trees (mixed species), 1 car on the road, 4 shrubs — reuses builders above.
+  const fgTree = (tx, tz, kind) => {
+    group.add(mk(trunkGeo, trunkMat, tx, 0.4, tz));
+    if (kind === 0) {
+      group.add(mk(coneGeoA, canopyA, tx, 1.35, tz));
+      group.add(mk(coneGeoB, canopyB, tx, 2.15, tz));
+      group.add(mk(coneGeoC, canopyC, tx, 2.85, tz));
+    } else if (kind === 1) {
+      const g = new THREE.Group();
+      g.position.set(tx, 0, tz);
+      g.add(mk(icoGeoA, canopyA, 0, 1.6, 0));
+      g.add(mk(icoGeoB, canopyB, 0.4, 2.1, 0.2));
+      g.add(mk(icoGeoC, canopyC, -0.3, 1.9, 0.4));
+      group.add(g);
+    } else {
+      const g = new THREE.Group();
+      g.position.set(tx, 0, tz);
+      g.add(mk(sphereGeoA, canopyA, 0, 1.5, 0));
+      g.add(mk(sphereGeoC, canopyC, 0.3, 1.7, 0.2));
+      group.add(g);
+    }
+  };
+  fgTree(-8, 40, 0);
+  fgTree(10, 42, 1);
+  fgTree(-14, 38, 2);
+  // 1 car at (9, 40) on the road strip near x 6 (roadB runs along z, centered x 6).
+  const fgCar = new THREE.Group();
+  fgCar.position.set(9, 0, 40);
+  fgCar.rotation.y = 0.1;
+  const fgBody = new THREE.Mesh(bodyGeo, carMats[1]);
+  fgBody.position.y = 0.45;
+  fgBody.castShadow = true;
+  fgCar.add(fgBody);
+  const fgCabin = new THREE.Mesh(cabinGeo, windowMat);
+  fgCabin.position.set(0, 0.45, 0);
+  fgCabin.castShadow = true;
+  fgCar.add(fgCabin);
+  for (const [wx, wz] of [[-0.6, -0.45], [-0.6, 0.45], [0.6, -0.45], [0.6, 0.45]]) {
+    const wheel = new THREE.Mesh(wheelGeo, inkMat);
+    wheel.position.set(wx, 0.22, wz);
+    wheel.rotation.z = Math.PI / 2;
+    fgCar.add(wheel);
+  }
+  group.add(fgCar);
+  // 4 shrubs.
+  for (const [sx, sz] of [[-4, 38], [4, 41], [-11, 43], [12, 37]]) {
+    const s = mk(shrubGeo, shrubMat, sx, 0.2, sz);
+    s.scale.y = 0.4;
+    group.add(s);
+  }
+
   // --- Coolant towers (the CHARGE targets — match world.js exactly) ----------
   const towers = [];
   const towerPos = [[-14, -8], [12, -10], [0, 12]];
