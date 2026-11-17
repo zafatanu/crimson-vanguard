@@ -1,53 +1,103 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// Keyboard and pointer input: one-shot presses queue bit flags (taken once by
+// the loop), held controls (blast, boost) stay live and are read every frame,
+// and the pointer position is always tracked for mouse-follow steering.
+export const WORLD_PER_PX = 0.055; // 1280x800 -> world plane: screen centre (640,400) maps to world (0,0).
+export const ACTION_CONFIRM = 1; // Enter / Space tap
+export const ACTION_PAUSE = 2; // P / Escape
+export const ACTION_BLAST = 4; // Space held or mouse button 0 held (a held action)
+export const ACTION_BOOST = 8; // Shift held (a held action)
+export const ACTION_RETARDANT = 16; // Q tap
+export const ACTION_MUTE = 32; // M tap
+export const ACTION_SPEED = 64; // F tap
+export const ACTION_RESTART = 128; // R tap
+export const ACTION_DIFFICULTY_1 = 256; // Digit1
+export const ACTION_DIFFICULTY_2 = 512; // Digit2
+export const ACTION_DIFFICULTY_3 = 1024; // Digit3
+export const ACTION_CLICK = 2048; // pointer released over the canvas
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+export function createInput(canvas) {
+  let bits = 0;
+  let blastKey = false; // Space held
+  let boostKey = false; // Shift held
+  let pointerHeld = false; // mouse button 0 held
+  let pointer = { x: 640, y: 400 };
+  let click = null;
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
-
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
+  // Fit-scale: map a client pointer onto the fixed 1280x800 logical grid, the
+  // same letterbox math the renderer uses so steering and clicks line up.
+  function locate(event) {
+    const rect = canvas.getBoundingClientRect();
+    const scale = Math.min(rect.width / 1280, rect.height / 800);
+    pointer = {
+      x: (event.clientX - rect.left - (rect.width - 1280 * scale) / 2) / scale,
+      y: (event.clientY - rect.top - (rect.height - 800 * scale) / 2) / scale,
+    };
+    return pointer;
+  }
 
   window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
+    const code = event.code;
+    if (code === 'Space') {
+      blastKey = true;
+      if (!event.repeat) bits |= ACTION_CONFIRM;
+    } else if (code === 'Enter') { if (!event.repeat) bits |= ACTION_CONFIRM; }
+    else if (code === 'KeyP' || code === 'Escape') { if (!event.repeat) bits |= ACTION_PAUSE; }
+    else if (code === 'ShiftLeft' || code === 'ShiftRight') boostKey = true;
+    else if (code === 'KeyQ') { if (!event.repeat) bits |= ACTION_RETARDANT; }
+    else if (code === 'KeyM') { if (!event.repeat) bits |= ACTION_MUTE; }
+    else if (code === 'KeyF') { if (!event.repeat) bits |= ACTION_SPEED; }
+    else if (code === 'KeyR') { if (!event.repeat) bits |= ACTION_RESTART; }
+    else if (code === 'Digit1') bits |= ACTION_DIFFICULTY_1;
+    else if (code === 'Digit2') bits |= ACTION_DIFFICULTY_2;
+    else if (code === 'Digit3') bits |= ACTION_DIFFICULTY_3;
+    else return;
     event.preventDefault();
   });
   window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
+    if (event.code === 'Space') blastKey = false;
+    else if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') boostKey = false;
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
   window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+    blastKey = false; boostKey = false; pointerHeld = false;
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
+
+  canvas.addEventListener('pointerdown', (event) => {
+    locate(event);
+    if (event.button === 0) {
+      pointerHeld = true;
+      if (!event.repeat) bits |= ACTION_BLAST;
+    }
+    event.preventDefault();
+  });
+  canvas.addEventListener('pointerup', (event) => {
+    locate(event);
+    if (event.button === 0) {
+      pointerHeld = false;
+      click = { x: pointer.x, y: pointer.y };
+      bits |= ACTION_CLICK;
+    }
+    event.preventDefault();
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    locate(event);
+    event.preventDefault();
+  });
+  canvas.addEventListener('pointercancel', () => {
+    pointerHeld = false;
+    blastKey = false;
   });
 
   return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
     takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
+      const actions = { bits, click };
+      bits = 0; click = null;
+      return actions;
+    },
+    isBlasting() { return blastKey || pointerHeld; },
+    isBoosting() { return boostKey; },
+    pointer() { return { x: pointer.x, y: pointer.y }; },
+    worldTarget() {
+      return { mx: (pointer.x - 640) * WORLD_PER_PX, mz: (pointer.y - 400) * WORLD_PER_PX };
     },
   };
 }
