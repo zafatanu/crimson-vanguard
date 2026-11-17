@@ -249,39 +249,83 @@ export function createRenderer(canvas) {
     const grades = Array.isArray(state.missionGrades) ? state.missionGrades : [];
     const current = state.mission || 1;
     const next = state.phase === 'draft' ? Math.min(7, current + 1) : current;
-    let nodes = '';
+    const NAME_SHORT = {
+      'The Ironworks': 'IRONWORKS',
+      'Copperline Docks': 'COPPERLINE',
+    };
+    // Node x/y. x = 88 + (i-1)*176 ; y on a gentle sine.
+    const pt = [];
+    for (let i = 1; i <= 7; i += 1) {
+      pt.push({
+        x: 88 + (i - 1) * 176,
+        y: 62 + Math.round(28 * Math.sin((i - 1) * 0.9)),
+      });
+    }
+    // Full path: straight polyline through all 7 points.
+    const full = 'M ' + pt.map(function (p) { return p.x + ' ' + p.y; }).join(' L ');
+    // Dashed next leg: from current node to the next node only.
+    let nextLeg = '';
+    if (next >= 1 && next <= 6) {
+      nextLeg = '<path d="M ' + pt[next - 1].x + ' ' + pt[next - 1].y +
+        ' L ' + pt[next].x + ' ' + pt[next].y + '" stroke="var(--cta)" stroke-width="2"' +
+        ' stroke-dasharray="6 4" fill="none"></path>';
+    }
+    let svg = '';
     for (let i = 1; i <= 7; i += 1) {
       const m = MISSIONS[i - 1];
       const g = grades[i - 1];
+      const p = pt[i - 1];
+      const taken = g === 'S' || g === 'A' || g === 'B';
       const isNext = i === next;
       const isBoss = !!m.boss;
       const isFork = i === 2 || i === 4 || i === 5;
-      const taken = g === 'S' || g === 'A' || g === 'B';
-      const medal = taken
-        ? gradeChip(g)
-        : isNext
-        ? '<span class="chip" style="background:' + PALETTE.cta + ';color:#101010;">NEXT</span>'
-        : '<span class="chip" style="background:#17302A;color:#9FB5AC;">' + i + '</span>';
-      nodes +=
-        '<div style="text-align:center;position:relative;flex:0 0 auto;width:120px;">' +
-        '<div class="big" style="font-size:12px;letter-spacing:0.1em;">' +
-        (isBoss ? '<span class="gold">&#9733;</span> ' : '') +
-        'M' + i + '</div>' +
-        '<div style="margin-top:4px;font-size:11px;line-height:1.2;color:#9FB5AC;height:26px;overflow:hidden;">' +
-        esc(m ? m.name : '') + '</div>' +
-        '<div style="margin-top:4px;">' + medal + '</div>' +
-        (isFork ? '<div class="label" style="margin-top:3px;font-size:9px;">REFIT</div>' : '') +
-        '</div>';
+      const label = esc((NAME_SHORT[m.name] || m.name).toUpperCase());
+      let fill, stroke, sw, inside;
+      if (taken) {
+        if (g === 'S') {
+          fill = 'var(--gold)';
+          stroke = 'var(--gold)';
+          sw = 1;
+          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--ink)"' +
+            ' style="font-size:14px;font-weight:bold;">' + g + '</text>';
+        } else {
+          fill = (g === 'A' ? 'var(--green)' : 'var(--blue)');
+          stroke = fill;
+          sw = 1;
+          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--panel)"' +
+            ' style="font-size:14px;font-weight:bold;">' + g + '</text>';
+        }
+      } else if (isNext) {
+        fill = 'var(--panel)';
+        stroke = 'var(--cta)';
+        sw = 3;
+        inside = '';
+      } else {
+        fill = 'var(--panel)';
+        stroke = 'var(--border)';
+        sw = 2;
+        inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--text-dim)"' +
+          ' style="font-size:12px;">' + i + '</text>';
+      }
+      const shape = isBoss
+        ? '<rect x="' + (p.x - 10) + '" y="' + (p.y - 10) + '" width="20" height="20" transform="rotate(45 ' + p.x + ' ' + p.y + ')"' +
+          ' fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"></rect>'
+        : '<circle cx="' + p.x + '" cy="' + p.y + '" r="14" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"></circle>';
+      const refit = isFork
+        ? '<rect x="' + (p.x - 4) + '" y="' + (p.y - 34) + '" width="8" height="8" transform="rotate(45 ' + p.x + ' ' + (p.y - 26) + ')"' +
+          ' fill="var(--gold)"></rect>'
+        : '';
+      svg += shape + inside + refit +
+        '<text x="' + p.x + '" y="' + (p.y + 34) + '" text-anchor="middle" fill="var(--text)"' +
+        ' style="font-size:11px;font-weight:700;letter-spacing:0.02em;">' + label + '</text>';
     }
-    return '<div class="hud-zone" style="position:absolute;left:24px;right:24px;bottom:88px;">' +
-      '<div class="panel" style="padding:12px 16px;">' +
+    return '<div class="panel" style="padding:12px 16px;">' +
       '<div class="label" style="text-align:center;">THE SEASON ROUTE</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;">' +
-      nodes +
-      '</div>' +
-      '<div style="height:2px;margin:8px 18px 0;background:' +
-      'repeating-linear-gradient(90deg,' + PALETTE.cta + ' 0 8px,transparent 8px 16px);"></div>' +
-      '</div></div>';
+      '<svg class="cv-route" viewBox="0 0 1232 140" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="' + full + '" stroke="var(--text)" stroke-width="2" fill="none"></path>' +
+      nextLeg +
+      svg +
+      '</svg></div>';
   }
 
   // ----------------------------------------------------------------------
@@ -293,12 +337,23 @@ export function createRenderer(canvas) {
     const mName = m ? m.name : 'Mission ' + state.mission;
     const win = state.outcome === 'WIN';
     const grade = (state.missionGrades && state.missionGrades[state.mission - 1]) || (win ? 'S' : 'B');
+    // Header row: left = kicker + district (cream, T2), right = grade badge.
+    const gradeBadge =
+      '<div class="cv-grade-badge' +
+      (grade === 'A' ? ' cv-grade-badge--a' : grade === 'B' ? ' cv-grade-badge--b' : '') +
+      '">' + esc(grade) + '</div>';
     const header =
-      '<div class="hud-zone" style="position:absolute;top:16px;left:16px;right:16px;text-align:center;">' +
-      '<div class="panel" style="display:inline-block;padding:10px 22px;">' +
-      '<div class="label">MISSION ' + state.mission + ' / 7 HELD TILL THE RAIN</div>' +
-      '<div class="big" style="font-size:20px;margin-top:2px;">' + esc(mName) + '</div>' +
-      '</div></div>';
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+      '<div>' +
+      '<div class="cv-label">MISSION ' + state.mission + ' / 7 &middot; HELD TILL THE RAIN</div>' +
+      '<div class="cv-display cv-t2" style="color:var(--text);">' + esc(mName) + '</div>' +
+      '</div>' +
+      '<div style="text-align:center;">' +
+      gradeBadge +
+      '<div class="cv-label" style="margin-top:6px;">DISTRICT GRADE</div>' +
+      '</div>' +
+      '</div>';
+    // Stat strip: 6 cells in a grid + WIN/LOSE chip at the right.
     const stats = [
       ['SCORE', fmt(state.score)],
       ['DOUSED', state.flamesDoused],
@@ -307,24 +362,17 @@ export function createRenderer(canvas) {
       ['GRADE', state.missionGrades ? state.missionGrades[state.mission - 1] : 'B'],
       ['HULL', state.hull],
     ];
-    let strip = '';
+    let statCells = '';
     for (let i = 0; i < stats.length; i += 1) {
-      strip += '<div style="text-align:center;min-width:96px;">' +
-        '<div class="label">' + stats[i][0] + '</div>' +
-        '<div class="big" style="font-size:18px;">' + stats[i][1] + '</div></div>';
+      statCells += '<div class="cv-stat"><div class="cv-stat__label">' + stats[i][0] +
+        '</div><div class="cv-stat__value">' + stats[i][1] + '</div></div>';
     }
-    const gradeBadge = win
-      ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;' +
-        'border-radius:50%;background:' + PALETTE.goldBright + ';color:#101010;font-size:26px;font-weight:800;">' +
-        esc(grade) + '</span>'
-      : gradeChip(grade);
-    const result =
-      '<div class="hud-zone" style="position:absolute;top:74px;left:16px;right:16px;">' +
-      '<div class="panel" style="padding:12px 18px;display:flex;align-items:center;gap:20px;justify-content:center;">' +
-      gradeBadge +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + strip + '</div>' +
+    const statStrip =
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;flex:1;">' +
+      statCells + '</div>' +
       '<div class="chip ' + (win ? 'win' : 'lose') + '">' + (win ? 'WIN' : 'LOSE') + '</div>' +
-      '</div></div>';
+      '</div>';
 
     // REFIT THE SENTINEL — PICK 1 OF 3, from state.options (catalog REFITS).
     let refit = '';
@@ -334,20 +382,25 @@ export function createRenderer(canvas) {
       for (let i = 0; i < options.length; i += 1) {
         const r = options[i];
         const rec = REFITS.find(function (x) { return x && x.n === r.n; }) || r;
+        const rare = rec.e === 'score';
         cards +=
-          '<div class="panel" style="padding:12px 14px;width:200px;text-align:left;background:' + PALETTE.cream + ';color:#1E1B18;">' +
-          '<div class="big" style="font-size:18px;color:' + PALETTE.goldBright + ';">' + esc(rec.n) + '</div>' +
-          '<div style="font-size:12px;color:#55604C;margin-top:6px;line-height:1.4;">' + esc(rec.s) + '</div>' +
-          '<div class="label" style="margin-top:8px;font-size:9px;color:' + PALETTE.cta + ';">' +
-          (r.fitted ? 'FITTED' : 'NEW') + '</div>' +
+          '<div class="cv-refit-card' + (r.fitted ? ' cv-refit-card--selected' : '') + '">' +
+          '<div class="cv-refit-card__ribbon' + (rare ? ' cv-refit-card__ribbon--rare' : '') + '">' +
+          '<span>' + (i + 1) + '</span><span>' + (rare ? 'RARE REFIT' : 'REFIT') + '</span></div>' +
+          '<div class="cv-refit-card__icon">' + esc(rec.n).charAt(0) + '</div>' +
+          '<div class="cv-refit-card__name">' + esc(rec.n) + '</div>' +
+          '<div class="cv-refit-card__desc">' + esc(rec.s) + '</div>' +
+          '<span class="cv-chip ' + (r.fitted ? 'cv-chip--fitted' : 'cv-chip--new') + '">' +
+          (r.fitted ? 'FITTED' : 'NEW') + '</span>' +
           '</div>';
       }
       refit =
-        '<div class="hud-zone" style="position:absolute;top:150px;left:16px;right:16px;">' +
-        '<div class="panel" style="padding:12px 18px;text-align:center;">' +
-        '<div class="label">REFIT THE SENTINEL &mdash; PICK 1 OF 3</div>' +
-        '<div style="display:flex;justify-content:center;gap:14px;margin-top:10px;flex-wrap:wrap;">' +
-        cards + '</div></div></div>';
+        '<div style="flex:1;">' +
+        '<div class="cv-label">REFIT THE SENTINEL &mdash; PICK 1 OF 3</div>' +
+        '<div class="muted" style="font-size:12px;margin-top:2px;">(press 1, 2, 3)</div>' +
+        '<div style="display:flex;gap:16px;margin-top:10px;">' + cards + '</div>' +
+        '<div style="margin-top:12px;"><button class="cv-btn-secondary">SKIP REFIT &mdash; keep current build</button></div>' +
+        '</div>';
     }
 
     // THE ROUTE FORKS — CHOOSE THE NEXT MISSION (A/B). Only after 2/4/5.
@@ -357,25 +410,32 @@ export function createRenderer(canvas) {
       const a = forkRow.a; const b = forkRow.b;
       const opt = function (k, label, risk) {
         const on = state.forkChoice === k;
-        return '<div class="panel" style="padding:10px 14px;width:300px;text-align:left;' +
-          (on ? 'border:2px solid ' + PALETTE.cta + ';' : '') + '">' +
-          '<div class="big" style="font-size:16px;color:' + PALETTE.cream + ';">' + esc(label) + '</div>' +
-          '<div style="font-size:12px;color:#9FB5AC;margin-top:4px;line-height:1.4;">' + esc(risk) + '</div>' +
+        return '<div class="panel" style="padding:12px 14px;text-align:left;' +
+          (on ? 'border:2px solid var(--gold);background:rgba(247,183,51,0.06);' : '') + '">' +
+          '<div class="big" style="font-size:16px;">' + esc(label) + '</div>' +
+          '<div class="cv-body" style="margin-top:4px;">' + esc(risk) + '</div>' +
+          (on ? '<div class="label" style="margin-top:6px;">SELECTED</div>' : '') +
           '</div>';
       };
       fork =
-        '<div class="hud-zone" style="position:absolute;top:272px;left:16px;right:16px;">' +
-        '<div class="panel" style="padding:12px 18px;text-align:center;">' +
-        '<div class="label">THE ROUTE FORKS &mdash; CHOOSE THE NEXT MISSION</div>' +
-        '<div style="display:flex;justify-content:center;gap:14px;margin-top:10px;flex-wrap:wrap;">' +
-        opt(a.key, a.label, a.risk) + opt(b.key, b.label, b.risk) + '</div></div></div>';
+        '<div style="width:340px;">' +
+        '<div class="cv-label">THE ROUTE FORKS &mdash; CHOOSE THE NEXT MISSION</div>' +
+        '<div style="display:flex;flex-direction:column;gap:12px;margin-top:10px;">' +
+        opt(a.key, a.label, a.risk) + opt(b.key, b.label, b.risk) + '</div>' +
+        '</div>';
     }
 
-    const cta =
-      '<div class="hud-zone" style="position:absolute;right:16px;bottom:8px;text-align:right;">' +
-      '<span class="cta-btn">TAKE OFF</span></div>';
+    const middle =
+      '<div style="display:flex;gap:16px;align-items:flex-start;">' +
+      refit + (fork || '') +
+      '</div>';
 
-    return header + result + refit + fork + drawRoute(state) + cta;
+    const cta =
+      '<div style="display:flex;justify-content:flex-end;"><span class="cta-btn">TAKE OFF</span></div>';
+
+    return '<div class="hud-zone" style="position:absolute;inset:16px;display:flex;flex-direction:column;gap:12px;">' +
+      header + statStrip + middle + drawRoute(state) + cta +
+      '</div>';
   }
 
   // ----------------------------------------------------------------------
