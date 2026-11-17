@@ -591,7 +591,8 @@ export function createRenderer(canvas) {
 
     const outcome = state.outcome || '';
     const signature = screen + '|' + state.score + '|' + Math.round(state.tank)
-      + '|' + state.mission + '|' + (ticker || state.ticker) + '|' + outcome;
+      + '|' + state.mission + '|' + (ticker || state.ticker) + '|' + outcome
+      + '|' + Math.ceil(state.rainFront) + '|' + state.chain + '|' + Math.round(state.hull);
     if (signature === lastSig) return;
     lastSig = signature;
 
