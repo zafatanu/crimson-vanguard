@@ -254,7 +254,7 @@ function step() {
 
 function frame(now) {
   requestAnimationFrame(frame);
-  const elapsed = Math.min(now - lastFrame, MAX_FRAME);
+  const elapsed = Math.min((now - lastFrame) / 1000, MAX_FRAME);
   lastFrame = now;
   handleFrameActions(input);
   accumulator += elapsed;
