@@ -307,6 +307,105 @@ export function buildEnvironment(scene, PALETTE) {
     }
   }
 
+  // --- Shrubs, grass tufts + props (lamps, cars, hydrant, benches) ---
+  const shrubMat = new THREE.MeshStandardMaterial({ color: '#7A9A58', roughness: 1 });
+  const shrubGeo = new THREE.SphereGeometry(0.5, 10, 8);
+  const shrubSpots = [[-6, -4], [8, 2], [-18, 6], [18, -14], [4, -20]];
+  for (let i = 0; i < shrubSpots.length; i += 1) {
+    const [sx, sz] = shrubSpots[i];
+    const n = 2 + (i % 2);
+    for (let j = 0; j < n; j += 1) {
+      const s = mk(shrubGeo, shrubMat, sx + (j - 1) * 1.5, 0.2, sz + (j - 1) * 1.5);
+      s.scale.y = 0.4;
+      group.add(s);
+    }
+  }
+  const tuftGeo = new THREE.ConeGeometry(0.12, 0.4, 6);
+  const tuftMat = new THREE.MeshStandardMaterial({ color: '#A3BC78', roughness: 1 });
+  for (let x = -20; x <= 20; x += 5) {
+    if (Math.abs(x - 6) < 2) continue;
+    for (const z of [-3.4, 3.4]) {
+      group.add(mk(tuftGeo, tuftMat, x, 0.2, z));
+    }
+  }
+  const inkMat = new THREE.MeshStandardMaterial({ color: PALETTE.ink, roughness: 0.8 });
+  const lampPos = [[-2, -4], [14, -4], [-2, 4], [14, 4], [12, 8], [20, 12]];
+  const lampGlowMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 1.5,
+  });
+  for (let i = 0; i < lampPos.length; i += 1) {
+    const [lx, lz] = lampPos[i];
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 2.2, 8), inkMat);
+    pole.position.set(lx, 1.1, lz);
+    pole.castShadow = true ;
+    group.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.08), inkMat);
+    arm.position.set(lx + 0.3, 2.05, lz);
+    group.add(arm);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), lampGlowMat);
+    glow.position.set(lx + 0.65, 2.15, lz);
+    group.add(glow);
+  }
+  const carMats = [
+    new THREE.MeshStandardMaterial({ color: PALETTE.facadeSlate, roughness: 0.7 }),
+    new THREE.MeshStandardMaterial({ color: PALETTE.facadeBrick, roughness: 0.7 }),
+    new THREE.MeshStandardMaterial({ color: PALETTE.steel, roughness: 0.5 }),
+  ];
+  const carPos = [[-4, -0.8, 0.3], [10, 3.2, -0.2], [16, -3.4, 0.1]];
+  const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 0.9);
+  const cabinGeo = new THREE.BoxGeometry(1.0, 0.4, 0.8);
+  const wheelGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.15, 12);
+  const windowMat = new THREE.MeshStandardMaterial({ color: PALETTE.windowDark, roughness: 0.3 });
+  for (let i = 0; i < carPos.length; i += 1) {
+    const [cx, cz, ry] = carPos[i];
+    const car = new THREE.Group();
+    car.position.set(cx, 0, cz);
+    car.rotation.y = ry;
+    const body = new THREE.Mesh(bodyGeo, carMats[i]);
+    body.position.y = 0.45;
+    body.castShadow = true;
+    car.add(body);
+    const cabin = new THREE.Mesh(cabinGeo, windowMat);
+    cabin.position.set(0, 0.45, 0);
+    cabin.castShadow = true;
+    car.add(cabin);
+    for (const [wx, wz] of [[-0.6, -0.45], [-0.6, 0.45], [0.6, -0.45], [0.6, 0.45]]) {
+      const wheel = new THREE.Mesh(wheelGeo, inkMat);
+      wheel.position.set(wx, 0.22, wz);
+      wheel.rotation.z = Math.PI / 2;
+      car.add(wheel);
+    }
+    group.add(car);
+  }
+  const hydrant = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.6, 10),
+    new THREE.MeshStandardMaterial({ color: PALETTE.heroRed, roughness: 0.5 }));
+  hydrant.position.set(0, 0.3, 4);
+  hydrant.castShadow = true;
+  group.add(hydrant);
+  const hydTop = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8),
+    new THREE.MeshStandardMaterial({ color: PALETTE.gold, roughness: 0.5 }));
+  hydTop.position.set(0, 0.62, 4);
+  hydTop.castShadow = true;
+  group.add(hydTop);
+  const seatMat = new THREE.MeshStandardMaterial({ color: PALETTE.tan, roughness: 0.8 });
+  const benchSpots = [[-7, -3], [-5, -5]];
+  for (let i = 0; i < benchSpots.length; i += 1) {
+    const [bx, bz] = benchSpots[i];
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.45), seatMat);
+    seat.position.set(bx, 0.45, bz);
+    seat.castShadow = true;
+    group.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.08), seatMat);
+    back.position.set(bx, 0.75, bz - 0.2);
+    back.castShadow = true;
+    group.add(back);
+    for (const [lx, lz] of [[-0.5, -0.2], [0.5, -0.2]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), inkMat);
+      leg.position.set(bx + lx, 0.22, bz + lz);
+      group.add(leg);
+    }
+  }
+
   // --- Coolant towers (the CHARGE targets — match world.js exactly) ----------
   const towers = [];
   const towerPos = [[-14, -8], [12, -10], [0, 12]];
