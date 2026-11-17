@@ -1,141 +1,257 @@
-// Drawing only: the world's state and the current screen in, pixels out. The 1280x720 playfield
-// is scaled to fit the window and centred, the margin filled with the backdrop colour. Flat
-// rectangles and circles, canvas text for the HUD and the panels. Text that holds a number is
-// rebuilt only when the number changes, so a frame allocates nothing.
-import { FIELD, FONT, LIVES, PALETTE } from './config.js';
-import { KIND_COIN } from './world.js';
+// Crimson Vanguard — HUD renderer (DOM in #hud, not WebGL).
+// Paint one frame: rebuild the #hud innerHTML only when a cheap signature
+// changes, so a steady frame allocates nothing. The WebGL picture is
+// painted by scene3d.createScene(...).update(state, time, view); this
+// module owns only the DOM overlay.
+import { PALETTE, VIEW } from './config.js';
+import { MISSIONS, DIFFICULTIES } from './catalog.js';
+import { createScene } from './scene3d.js';
 
 export const SCREEN_TITLE = 'title';
 export const SCREEN_PLAY = 'play';
-export const SCREEN_PAUSED = 'paused';
+export const SCREEN_DRAFT = 'draft';
 export const SCREEN_OVER = 'over';
+export const SCREEN_PAUSED = 'paused';
 
-/** The panel's width; its height grows with its lines: room for the title, the lines and the prompt. */
-const PANEL = { width: 600, top: 134, line: 34, bottom: 70 };
-const LIFE_SIZE = 20;
-const LIFE_GAP = 8;
+// ---- HUD CSS (injected once into a style tag) ----
+// Panels dark teal #0E1B17, 1px gold/teal borders, 8px radii. Display face
+// is vendored Noto Sans Condensed ExtraBold; body is Noto Sans. CTA is ONE
+// big orange button per screen, black bold text. Body and display faces only.
+const HUD_CSS = [
+  '#hud .hud-zone { pointer-events: none; }',
+  '#hud .panel { background: ' + PALETTE.dark + '; color: ' + PALETTE.cream + ';',
+  '  border: 1px solid ' + PALETTE.goldBright + '; border-radius: 8px;',
+  '  font-family: ' + VIEW.font + '; letter-spacing: 0.02em; }',
+  '#hud .label { font-family: ' + VIEW.ui + '; font-size: 11px; font-weight: 700;',
+  '  letter-spacing: 0.14em; text-transform: uppercase; color: ' + PALETTE.goldBright + '; }',
+  '#hud .big { font-weight: 800; color: ' + PALETTE.cream + '; }',
+  '#hud .gold { color: ' + PALETTE.goldBright + '; }',
+  '#hud .orange { color: ' + PALETTE.cta + '; }',
+  '#hud .green { color: #58C97B; }',
+  '#hud .blue { color: #4FD8FF; }',
+  '#hud .red { color: #FF6B52; }',
+  '#hud .muted { color: #9FB5AC; }',
+  '#hud .rule { height: 2px; background: ' + PALETTE.cta + '; border-radius: 1px; }',
+  '#hud .cta-btn { display: inline-block; padding: 14px 30px; border-radius: 8px;',
+  '  background: ' + PALETTE.cta + '; color: #101010; font-weight: 800;',
+  '  font-size: 26px; letter-spacing: 0.04em; }',
+  '#hud .chip { display: inline-block; padding: 4px 12px; border-radius: 999px;',
+  '  font-family: ' + VIEW.ui + '; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; }',
+  '#hud .chip.s { background: ' + PALETTE.goldBright + '; color: #101010; }',
+  '#hud .chip.a { background: #2E8B57; color: #F5FFFA; }',
+  '#hud .chip.b { background: #2E6FAB; color: #F0F8FF; }',
+  '#hud .chip.goal { background: #2560B0; color: #EAF4FF; }',
+  '#hud .chip.win { background: #2E8B57; color: #EFFFF4; }',
+  '#hud .chip.lose { background: #C2432C; color: #FFF0EC; }',
+  '#hud .ticker { color: ' + PALETTE.goldBright + '; font-size: 16px; letter-spacing: 0.06em; }',
+  '#hud .bar { height: 10px; border-radius: 5px; background: #17302A; overflow: hidden; }',
+  '#hud .bar span { display: block; height: 100%; border-radius: 5px; }',
+  '#hud .bar.gold span { background: ' + PALETTE.goldBright + '; }',
+  '#hud .bar.red span { background: ' + PALETTE.fire + '; }',
+].join('\n');
 
-function cachedLabel(prefix) {
-  let value = -1;
-  let text = '';
-  return function label(next) {
-    if (next !== value) {
-      value = next;
-      text = prefix + next;
-    }
-    return text;
-  };
+// ---- Small helpers -------------------------------------------------------
+
+/** Escape a string for safe injection into innerHTML. */
+function esc(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
+/** A number with thousands separators, e.g. 118000 -> "118,000". */
+function fmt(n) {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** Seconds -> "m:ss" (used for the RAIN FRONT and mission timers). */
+function mmss(s) {
+  const clamped = Math.max(0, Math.floor(s));
+  const m = Math.floor(clamped / 60);
+  const sec = clamped % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+/** A bounded bar fill percent 0..100. */
+function pct(v) {
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+// --------------------------------------------------------------------------
+// createRenderer: owns the DOM overlay (#hud) and the WebGL scene.
+// --------------------------------------------------------------------------
 export function createRenderer(canvas) {
-  const context = canvas.getContext('2d');
-  const view = { scale: 1, x: 0, y: 0 };
-  const scoreLabel = cachedLabel('Score ');
-  const levelLabel = cachedLabel('Level ');
-  const finalLabel = cachedLabel('Score ');
-  const bestLabel = cachedLabel('Best ');
+  const scene = createScene(canvas);
+  const hud = document.getElementById('hud');
+  const style = document.createElement('style');
+  style.textContent = HUD_CSS;
+  document.head.appendChild(style);
 
-  function resize() {
-    const ratio = window.devicePixelRatio || 1;
-    const width = Math.round(window.innerWidth * ratio);
-    const height = Math.round(window.innerHeight * ratio);
-    canvas.width = width;
-    canvas.height = height;
-    view.scale = Math.min(width / FIELD.width, height / FIELD.height);
-    view.x = (width - FIELD.width * view.scale) / 2;
-    view.y = (height - FIELD.height * view.scale) / 2;
+  let lastSig = '';
+
+  // ----------------------------------------------------------------------
+  // drawPlay: the in-mission HUD. Three zones max — top strip, top-right
+  // panel, bottom bar. Uses only the CSS classes defined above.
+  // ----------------------------------------------------------------------
+  function drawPlay(state, best, ticker) {
+    const row = MISSIONS[state.mission - 1];
+    const mName = row ? row.name : 'Mission';
+    const coresLeft = row ? row.cores : 0;
+    const win = state.outcome === 'WIN';
+    const lose = state.outcome === 'LOSE';
+    const incoming = state.bossName || 'Wind shift';
+    const chainN = state.chain;
+    const top =
+      '<div class="hud-zone" style="position:absolute;top:16px;left:16px;right:240px;">' +
+      '<div class="panel" style="padding:12px 18px;">' +
+      '<div class="label">MISSION ' + state.mission + ' / 7 &nbsp;&middot;&nbsp; ' + esc(mName) + '</div>' +
+      '<div class="big" style="font-size:22px;margin-top:4px;">Break ' + coresLeft + ' cores</div>' +
+      '<div class="muted" style="margin-top:2px;">RAIN FRONT ' + mmss(state.rainFront) + '</div>' +
+      (win
+        ? '<div class="green" style="margin-top:4px;">WIN &mdash; district holds.</div>'
+        : lose
+        ? '<div class="red" style="margin-top:4px;">LOSE &mdash; the fire line wins this one.</div>'
+        : '') +
+      '</div>' +
+      '<div class="ticker" style="margin-top:8px;">' + esc(ticker || state.ticker || '') + '</div>' +
+      '</div>';
+    const panel =
+      '<div class="panel" style="position:absolute;top:16px;right:16px;padding:12px 16px;text-align:right;">' +
+      '<div class="label">SCORE</div><div class="big" style="font-size:24px;">' + fmt(state.score) + '</div>' +
+      '<div class="muted" style="margin-top:4px;">BEST ' + fmt(best) + '</div>' +
+      '<div class="gold" style="margin-top:2px;">CHAIN x' + chainN + '</div>' +
+      '<div class="label" style="margin-top:8px;">INCOMING</div>' +
+      '<div class="big" style="font-size:15px;">' + esc(incoming) + '</div>' +
+      '</div>';
+    const tankPct = pct(state.tank);
+    const hullPct = pct(state.hull);
+    const bottom =
+      '<div class="hud-zone" style="position:absolute;left:16px;right:16px;bottom:16px;">' +
+      '<div class="panel" style="padding:10px 16px;">' +
+      '<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">' +
+      '<div style="min-width:150px;">' +
+      '<div class="label">TANK</div>' +
+      '<div class="bar gold" style="width:150px;"><span style="width:' + tankPct + '%;"></span></div>' +
+      '</div>' +
+      '<div class="chip">BLAST</div>' +
+      '<div class="chip">BOOST</div>' +
+      '<div class="chip">RETARDANT</div>' +
+      '<div style="min-width:140px;">' +
+      '<div class="label">HULL</div>' +
+      '<div class="bar red" style="width:140px;"><span style="width:' + hullPct + '%;"></span></div>' +
+      '</div>' +
+      '</div></div></div>';
+    return top + panel + bottom;
   }
 
-  const fonts = new Map();
-  function text(value, x, y, size, color, align) {
-    if (!fonts.has(size)) fonts.set(size, `${size}px ${FONT}`);
-    context.font = fonts.get(size);
-    context.fillStyle = color;
-    context.textAlign = align;
-    context.fillText(value, x, y);
-  }
-
-  function drawField(state) {
-    context.fillStyle = PALETTE.sky;
-    context.fillRect(0, 0, FIELD.width, FIELD.height);
-    context.fillStyle = PALETTE.ground;
-    context.fillRect(0, FIELD.groundY, FIELD.width, FIELD.height - FIELD.groundY);
-
-    const items = state.items;
-    for (let index = 0; index < items.length; index += 1) {
-      const item = items[index];
-      if (!item.active) continue;
-      if (item.kind === KIND_COIN) {
-        context.fillStyle = PALETTE.coin;
-        context.beginPath();
-        context.arc(item.x + item.width / 2, item.y + item.height / 2, item.width / 2, 0, Math.PI * 2);
-        context.fill();
-      } else {
-        context.fillStyle = PALETTE.block;
-        context.fillRect(item.x, item.y, item.width, item.height);
+  // ----------------------------------------------------------------------
+  // drawTitle: the title / pre-run screen. Compact panels, sky open at top.
+  // ----------------------------------------------------------------------
+  function drawTitle(state, best, lastRuns) {
+    const difficulties = DIFFICULTIES
+      .map(function (d) {
+        const sel = state.difficulty === d.key;
+        return '<span class="chip" style="' + (sel ? 'border:1px solid ' + PALETTE.cta + ';' : 'border:1px solid #17302A;') + '">'
+          + esc(d.label) + (sel ? ' &bull;' : '') + '</span>';
+      })
+      .join(' ');
+    const roster =
+      '7 MISSIONS &middot; 3 ROUTE FORKS &middot; 3 NAMED INFERNOS &middot; 16 REFITS &middot; 10 FEATS';
+    let bestRow = '';
+    if (typeof best === 'number') {
+      bestRow = '<div class="panel" style="padding:12px 18px;margin-top:10px;text-align:center;">' +
+        '<div class="label">BEST SEASON</div>' +
+        '<div class="big" style="font-size:28px;">' + fmt(best) + '</div></div>';
+    }
+    let runs = '';
+    const list = Array.isArray(lastRuns) ? lastRuns : [];
+    const shown = list.slice(0, 3);
+    if (shown.length) {
+      let inner = '';
+      for (let i = 0; i < shown.length; i += 1) {
+        const r = shown[i];
+        const outcome = r && r.outcome ? r.outcome : '';
+        const chipClass = outcome === 'WIN' ? 'win' : outcome === 'LOSE' ? 'lose' : 'goal';
+        const chipLabel = outcome === 'WIN' ? 'WIN' : outcome === 'LOSE' ? 'LOSE' : 'RUN';
+        const g = r && r.grade ? r.grade : '-';
+        inner += '<div style="margin-top:6px;">' +
+          '<span class="chip ' + chipClass + '">' + chipLabel + '</span>' +
+          ' <span class="gold">' + esc(g) + '</span>' +
+          ' <span class="muted">' + fmt(r ? r.score : 0) + '</span></div>';
       }
+      runs = '<div class="panel" style="padding:12px 18px;margin-top:10px;text-align:center;">' +
+        '<div class="label">LAST RUNS</div>' + inner + '</div>';
     }
+    return '<div class="hud-zone" style="position:absolute;left:40px;right:40px;top:120px;">' +
+      '<div style="text-align:center;">' +
+      '<div class="big" style="font-family:' + VIEW.font + ';font-size:64px;letter-spacing:0.04em;color:' + PALETTE.cream + ';">' +
+      'CRIMSON VANGUARD</div>' +
+      '<div class="rule" style="width:220px;margin:12px auto;"></div>' +
+      '<div class="big" style="font-size:17px;color:' + PALETTE.cream + ';margin-top:8px;">' +
+      'Fly the sentinel. Drown the fire line. Hold the city.</div>' +
+      '<div style="margin-top:10px;">' +
+      '<span class="chip goal">GOAL</span> <span class="chip win">WIN</span> <span class="chip lose">LOSE</span>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:center;gap:40px;margin-top:22px;">' +
+      '<div class="panel" style="padding:12px 18px;text-align:left;min-width:150px;">' +
+      '<div class="label">HOW TO FLY</div>' +
+      '<div class="muted" style="margin-top:6px;font-size:13px;">1 FLY &mdash; steer with mouse</div>' +
+      '<div class="muted" style="margin-top:3px;font-size:13px;">2 CHARGE &mdash; dive a tower ring or skim the reservoir</div>' +
+      '<div class="muted" style="margin-top:3px;font-size:13px;">3 BLAST &mdash; hold to fire coolant</div>' +
+      '</div>' +
+      '<div class="panel" style="padding:12px 18px;text-align:center;min-width:220px;">' +
+      '<div class="muted" style="font-size:13px;">' + roster + '</div>' +
+      '<div style="margin-top:8px;">' + difficulties + '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:center;gap:20px;margin-top:18px;">' +
+      '<div class="panel" style="padding:12px 18px;text-align:center;min-width:200px;">' +
+      '<div class="muted" style="font-size:13px;">LIVE &mdash; the autopilot is flying Ember Row</div>' +
+      '<div class="muted" style="margin-top:4px;font-size:12px;">SEED 86 &mdash; same seed, same run</div>' +
+      '<div class="muted" style="margin-top:4px;font-size:12px;">DAILY DISTRICT &mdash; Cinderfield</div>' +
+      '</div>' +
+      (bestRow || '') + (runs || '') +
+      '</div>' +
+      '<div style="text-align:center;margin-top:20px;">' +
+      '<span class="cta-btn">TAKE OFF &mdash; ENTER or CLICK</span>' +
+      '</div>' +
+      '</div></div>';
+  }
 
-    const player = state.player;
-    // Blink while invulnerable after a hit: hidden on every other tenth of a second.
-    if (player.invulnerable === 0 || Math.floor(player.invulnerable * 10) % 2 === 1) {
-      context.fillStyle = PALETTE.player;
-      context.fillRect(player.x, player.y, player.width, player.height);
+  // ----------------------------------------------------------------------
+  // draw: map a screen to a view, update the WebGL scene, rebuild the HUD
+  // DOM only when the cheap signature changes.
+  // ----------------------------------------------------------------------
+  function draw(state, screen, best, lastRuns, ticker, time) {
+    let view;
+    if (screen === SCREEN_TITLE) view = 'title';
+    else if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) view = 'play';
+    else if (screen === SCREEN_DRAFT) view = 'draft';
+    else view = 'over';
+
+    scene.update(state, time, view);
+
+    const outcome = state.outcome || '';
+    const signature = screen + '|' + state.score + '|' + Math.round(state.tank)
+      + '|' + state.mission + '|' + (ticker || state.ticker) + '|' + outcome;
+    if (signature === lastSig) return;
+    lastSig = signature;
+
+    if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) {
+      hud.innerHTML = drawPlay(state, best, ticker || state.ticker);
+    } else if (screen === SCREEN_TITLE) {
+      hud.innerHTML = drawTitle(state, best, lastRuns);
+    } else {
+      // DRAFT / OVER — temporary dark STANDBY panel (replaced by M5b).
+      hud.innerHTML = '<div class="hud-zone" style="position:absolute;top:16px;right:16px;left:16px;text-align:center;">' +
+        '<div class="panel" style="display:inline-block;padding:18px 34px;">' +
+        '<div class="label">' + (screen === SCREEN_OVER ? 'RUN COMPLETE' : 'STANDBY') + '</div>' +
+        '<div class="big" style="font-size:30px;color:' + PALETTE.cream + ';">' +
+        (screen === SCREEN_OVER ? esc(outcome) : '') + '</div></div></div>';
     }
   }
 
-  function drawHud(state) {
-    context.textBaseline = 'top';
-    text(scoreLabel(state.score), 24, 20, 28, PALETTE.text, 'left');
-    text(levelLabel(state.level), FIELD.width / 2, 20, 28, PALETTE.text, 'center');
-    const firstLife = FIELD.width - 24 - LIVES * (LIFE_SIZE + LIFE_GAP) + LIFE_GAP;
-    text('Lives', firstLife - 12, 20, 28, PALETTE.text, 'right');
-    for (let life = 0; life < LIVES; life += 1) {
-      context.fillStyle = life < state.lives ? PALETTE.player : PALETTE.ground;
-      context.fillRect(firstLife + life * (LIFE_SIZE + LIFE_GAP), 24, LIFE_SIZE, LIFE_SIZE);
-    }
-  }
-
-  function drawPanel(title, lines, prompt) {
-    const height = PANEL.top + lines.length * PANEL.line + PANEL.bottom;
-    const x = (FIELD.width - PANEL.width) / 2;
-    const y = (FIELD.height - height) / 2;
-    context.fillStyle = PALETTE.panel;
-    context.fillRect(x, y, PANEL.width, height);
-    context.textBaseline = 'alphabetic';
-    text(title, FIELD.width / 2, y + 78, 48, PALETTE.text, 'center');
-    for (let index = 0; index < lines.length; index += 1) {
-      text(lines[index], FIELD.width / 2, y + PANEL.top + index * PANEL.line, 22, PALETTE.muted, 'center');
-    }
-    text(prompt, FIELD.width / 2, y + height - 40, 24, PALETTE.coin, 'center');
-  }
-
-  const TITLE_LINES = ['Dodge the red blocks. Catch the gold coins.', 'Move with ← → or A D.  Pause with P.', ''];
-  const PAUSED_LINES = ['The blocks will wait for you.'];
-  const OVER_LINES = ['', ''];
-
-  /** Paint one frame: the field, then the HUD or a panel for the screen the game is on. */
-  function draw(state, screen, best) {
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.fillStyle = PALETTE.backdrop;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
-    drawField(state);
-    if (screen === SCREEN_TITLE) {
-      TITLE_LINES[2] = bestLabel(best);
-      drawPanel('Block Dodger', TITLE_LINES, 'Press Space or click to start');
-      return;
-    }
-    drawHud(state);
-    if (screen === SCREEN_PAUSED) drawPanel('Paused', PAUSED_LINES, 'Press P to resume');
-    else if (screen === SCREEN_OVER) {
-      OVER_LINES[0] = finalLabel(state.score);
-      OVER_LINES[1] = bestLabel(best);
-      drawPanel('Game over', OVER_LINES, 'Press Space or click to play again');
-    }
-  }
-
-  resize();
-  window.addEventListener('resize', resize);
   return { draw };
 }
