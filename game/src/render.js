@@ -4,7 +4,7 @@
 // painted by scene3d.createScene(...).update(state, time, view); this
 // module owns only the DOM overlay.
 import { PALETTE, VIEW } from './config.js';
-import { MISSIONS, DIFFICULTIES, REFITS } from './catalog.js';
+import { MISSIONS, DIFFICULTIES, REFITS, ROUTE_FORKS, FEATS } from './catalog.js';
 import { createScene } from './scene3d.js';
 
 export const SCREEN_TITLE = 'title';
@@ -235,17 +235,17 @@ export function createRenderer(canvas) {
   // twin refit markers at the fork missions.
   // ----------------------------------------------------------------------
   function drawRoute(state) {
-    const grades = state.grades || {};
+    const grades = Array.isArray(state.missionGrades) ? state.missionGrades : [];
     const current = state.mission || 1;
-    const next = state.nextMission || current;
+    const next = state.phase === 'draft' ? Math.min(7, current + 1) : current;
     let nodes = '';
     for (let i = 1; i <= 7; i += 1) {
       const m = MISSIONS[i - 1];
-      const g = grades[i];
+      const g = grades[i - 1];
       const isNext = i === next;
       const isBoss = !!m.boss;
       const isFork = i === 2 || i === 4 || i === 5;
-      const taken = !!g;
+      const taken = g === 'S' || g === 'A' || g === 'B';
       const medal = taken
         ? gradeChip(g)
         : isNext
@@ -281,7 +281,7 @@ export function createRenderer(canvas) {
     const m = MISSIONS[state.mission - 1];
     const mName = m ? m.name : 'Mission ' + state.mission;
     const win = state.outcome === 'WIN';
-    const grade = state.grade || (win ? 'S' : 'B');
+    const grade = (state.missionGrades && state.missionGrades[state.mission - 1]) || (win ? 'S' : 'B');
     const header =
       '<div class="hud-zone" style="position:absolute;top:16px;left:16px;right:16px;text-align:center;">' +
       '<div class="panel" style="display:inline-block;padding:10px 22px;">' +
@@ -290,10 +290,10 @@ export function createRenderer(canvas) {
       '</div></div>';
     const stats = [
       ['SCORE', fmt(state.score)],
-      ['FLAMES', state.flames],
-      ['HOMES', state.homes],
-      ['CHAINS', 'x' + state.chain],
-      ['RAIN', mmss(state.rainFront)],
+      ['DOUSED', state.flamesDoused],
+      ['HOMES', state.homesSaved + ' / ' + state.homesTotal],
+      ['CHAIN', 'x' + state.chain],
+      ['GRADE', state.missionGrades ? state.missionGrades[state.mission - 1] : 'B'],
       ['HULL', state.hull],
     ];
     let strip = '';
@@ -398,7 +398,10 @@ export function createRenderer(canvas) {
       '<div><div class="label">FEATS</div><div class="big">' + (state.feats ? state.feats.length : 0) + ' / 10</div></div>' +
       '<div><div class="label">CHAIN</div><div class="big">x' + state.chain + '</div></div>' +
       '</div></div>';
-    // THIN 2x5 stat strip from state.stats.
+    // THIN 2x5 stat strip from state.stats (a PLAIN NUMBER ARRAY on WIN).
+    const STAT_LABELS = ['FLAMES DOUSED', 'HOMES SAVED', 'HOMES TOTAL',
+      'BEST CHAIN', 'BEST COMBO', 'DROPS ON TARGET %', 'SCOOPS',
+      'CREW DROPS', 'CORES BROKEN', 'TIME S'];
     let strip = '';
     const stats = Array.isArray(state.stats) ? state.stats : [];
     if (stats.length) {
@@ -406,8 +409,8 @@ export function createRenderer(canvas) {
       for (let i = 0; i < stats.length && i < 10; i += 1) {
         const s = stats[i];
         cells += '<div style="text-align:center;min-width:104px;">' +
-          '<div class="label" style="font-size:9px;">' + esc(s.label) + '</div>' +
-          '<div class="big" style="font-size:15px;">' + esc(s.value) + '</div></div>';
+          '<div class="label" style="font-size:9px;">' + esc(STAT_LABELS[i] || ('STAT ' + (i + 1))) + '</div>' +
+          '<div class="big" style="font-size:15px;">' + esc(typeof s === 'number' ? (i === 4 ? s.toFixed(2) : fmt(s)) : s) + '</div></div>';
       }
       strip = '<div class="hud-zone" style="position:absolute;left:16px;right:16px;top:296px;">' +
         '<div class="panel" style="padding:8px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +

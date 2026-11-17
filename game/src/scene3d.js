@@ -91,13 +91,13 @@ export function createScene(canvas) {
     // --- Camera per view ---
     if (view === 'play') {
       camera.position.set(state.hero.x + 6.5, 5.2, state.hero.z + 10.5);
-      camera.lookAt(state.hero.x, state.hero.z + 1.2, state.hero.z);
+      camera.lookAt(state.hero.x, 1.2, state.hero.z);
     } else if (view === 'title') {
       camera.position.set(0, 14, 26);
       camera.lookAt(0, 0, 6);
     } else if (view === 'draft') {
-      camera.position.set(state.hero.x + 4, 3.5, state.hero.z + 7);
-      camera.lookAt(state.hero.x, 0, state.hero.z);
+      camera.position.set(state.hero.x + 6, 5, state.hero.z + 10);
+      camera.lookAt(state.hero.x, 2, state.hero.z);
     } else {
       // 'over' — dawn wide shot.
       camera.position.set(-8, 10, 22);
