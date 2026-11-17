@@ -59,7 +59,7 @@ export function createScene(canvas) {
   const fire = buildFire(scene, PALETTE);
 
   // Palm world offset (matches hero3d palmLight local position).
-  const palmLocal = new THREE.Vector3(1.9, 3.4, 1.2);
+  const palmLocal = new THREE.Vector3(1.1, 2.1, 1.6);
 
   // Aim point for the coolant stream: nearest unbroken core, else ahead.
   const aimFrom = new THREE.Vector3();
