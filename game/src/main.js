@@ -130,19 +130,62 @@ function clickPlay(x, y) {
   if (y > ENV.height - 90) announce('Blast and boost are held keys; steer with the mouse or arrows.');
 }
 
-function clickDraft(x, y) {
-  if (y >= 278 && y <= 566) {
-    if (x < 324) world.chooseRefit(0);
-    else if (x < 640) world.chooseRefit(1);
-    else if (x <= 956) world.chooseRefit(2);
-  } else if (x >= 964 && x <= 1264) {
-    if (y >= 274 && y <= 396) world.chooseFork('STEADY');
-    else if (y >= 408 && y <= 530) world.chooseFork('SCORE');
-  } else if (x >= 16 && x <= 316 && y >= 578 && y <= 626) {
-    world.continueFlight();
-  } else if (y > 700) {
-    world.continueFlight();
+// ---- DOM hit-testing: map a live #hud element rect onto the logical 1280x800
+// grid with the same letterbox math as input.js locate(), then test a point.
+function hudRect(el) {
+  const gameRect = ENV.canvas.getBoundingClientRect();
+  const scale = Math.min(gameRect.width / 1280, gameRect.height / 800);
+  const offsetX = (gameRect.width - 1280 * scale) / 2;
+  const offsetY = (gameRect.height - 800 * scale) / 2;
+  const r = el.getBoundingClientRect();
+  return {
+    x0: (r.left - gameRect.left - offsetX) / scale,
+    y0: (r.top - gameRect.top - offsetY) / scale,
+    x1: (r.right - gameRect.left - offsetX) / scale,
+    y1: (r.bottom - gameRect.top - offsetY) / scale,
+  };
+}
+
+function inside(rect, x, y) {
+  return x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1;
+}
+
+function findButton(selector, text) {
+  const buttons = document.querySelectorAll(selector);
+  for (const el of buttons) {
+    if (el.textContent && el.textContent.indexOf(text) !== -1) return el;
   }
+  return null;
+}
+
+function clickDraft(x, y) {
+  // Refit cards: DOM order = refit index (0, 1, 2).
+  const cards = document.querySelectorAll('#hud .cv-refit-card');
+  for (let i = 0; i < cards.length; i += 1) {
+    if (inside(hudRect(cards[i]), x, y)) {
+      world.chooseRefit(i);
+      return;
+    }
+  }
+  // Route fork panels: .panel whose .big child reads STEADY or SCORE x1.3.
+  const fork = document.querySelectorAll('#hud .panel');
+  for (const panel of fork) {
+    const big = panel.querySelector('.big');
+    const label = big && big.textContent ? big.textContent.trim() : '';
+    const choice = label === 'STEADY' ? 'STEADY' : (label === 'SCORE x1.3' ? 'SCORE' : '');
+    if (choice && inside(hudRect(panel), x, y)) {
+      world.chooseFork(choice);
+      return;
+    }
+  }
+  // SKIP REFIT button.
+  const skip = findButton('#hud .cv-btn-secondary', 'SKIP REFIT');
+  if (skip && inside(hudRect(skip), x, y)) {
+    world.continueFlight();
+    return;
+  }
+  // Fallback: below the fold continues the flight (TAKE OFF is off-viewport).
+  if (y > 700) world.continueFlight();
 }
 
 function handleFrameActions(input) {
@@ -160,8 +203,12 @@ function handleFrameActions(input) {
   } else if (screen === SCREEN_OVER) {
     if (bits & ACTION_CLICK) {
       const { x, y } = click;
-      if (x >= 924 && x <= 1264 && y >= 680 && y <= 744) startRun();
-      else if (x >= 924 && x <= 1264 && y >= 754 && y <= 794) screen = SCREEN_TITLE;
+      const fly = findButton('#hud .cta-btn, #hud .cv-btn-secondary', 'FLY ANOTHER SEASON');
+      if (fly && inside(hudRect(fly), x, y)) startRun();
+      else {
+        const title = findButton('#hud .cta-btn, #hud .cv-btn-secondary', 'TITLE & DIFFICULTY');
+        if (title && inside(hudRect(title), x, y)) screen = SCREEN_TITLE;
+      }
     }
     if (bits & ACTION_CONFIRM) startRun(runSeed);
   } else if (screen === SCREEN_DRAFT) {
