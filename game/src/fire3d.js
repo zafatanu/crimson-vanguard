@@ -15,7 +15,7 @@ export function buildFire(scene, PALETTE) {
   // INNER gold, and CORE skyWarm cones are children. Base is a charcoal scorch.
   const outerMat = new THREE.MeshStandardMaterial({
     color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 1.8,
-    transparent: true, opacity: 0.85,
+    transparent: true, opacity: 1.0,
   });
   const midMat = new THREE.MeshStandardMaterial({
     color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 2.5,
@@ -31,18 +31,18 @@ export function buildFire(scene, PALETTE) {
   });
   const flames = [];
   for (let i = 0; i < FLAME_COUNT; i += 1) {
-    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.1, 10), outerMat);
-    const mid = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 10), midMat);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 10), innerMat);
-    const core = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 10), coreMat);
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(1.02, 1.65, 10), outerMat);
+    const mid = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.25, 10), midMat);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.65, 10), innerMat);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.5, 10), coreMat);
     const base = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20), baseMat);
     outer.add(mid);
     outer.add(base);
     mid.add(inner);
     mid.add(core);
-    inner.position.y = 0.45;
-    core.position.y = 0.55;
-    mid.position.y = 0.35;
+    inner.position.y = 0.68;
+    core.position.y = 0.82;
+    mid.position.y = 0.52;
     base.rotation.x = -Math.PI / 2;
     base.position.y = 0.02;
     group.add(outer);
