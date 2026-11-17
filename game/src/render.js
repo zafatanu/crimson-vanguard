@@ -457,8 +457,8 @@ export function createRenderer(canvas) {
       ? ''
       : ';border-color:var(--red-text);color:var(--red-text)';
     const badge =
-      '<div style="width:150px;height:150px;margin:0 auto;' +
-      'background:radial-gradient(circle,var(--gold) 0 38px,var(--cta) 38px 54px,transparent 54px);' +
+      '<div style="width:120px;height:120px;margin:0 auto;' +
+      'background:radial-gradient(circle,var(--gold) 0 30px,var(--cta) 30px 44px,transparent 44px);' +
       'border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
       '<div class="cv-grade-badge' +
       (grade === 'A' ? ' cv-grade-badge--a' : grade === 'B' ? ' cv-grade-badge--b' : '') +
@@ -468,7 +468,7 @@ export function createRenderer(canvas) {
     // CARD: 560px wide, panel --panel-3, gold 2px border, centred.
     let card =
       '<div class="panel" style="width:560px;background:var(--panel-3);' +
-      'border:2px solid var(--gold);padding:16px;text-align:center;">' +
+      'border:2px solid var(--gold);padding:12px;text-align:center;">' +
       badge;
     if (!win) {
       card += '<div style="margin-top:6px;color:var(--red-text);font-size:var(--t6b);' +
@@ -479,16 +479,15 @@ export function createRenderer(canvas) {
       '<div class="cv-display cv-t4" style="margin-top:10px;color:var(--text);">' + esc(headline) + '</div>' +
       '<div class="cv-body" style="margin-top:4px;color:var(--text-dim);">' + esc(sub) + '</div>' +
       '<div class="cv-label" style="margin-top:10px;">SEASON SCORE</div>' +
-      '<div class="cv-display cv-t2" style="color:var(--gold);">' + fmt(state.score) + '</div>' +
+      '<div class="cv-display" style="color:var(--gold);font-size:56px;">' + fmt(state.score) + '</div>' +
       (newBest
         ? '<span class="cv-chip" style="background:var(--gold);color:var(--ink);margin-top:8px;">NEW BEST</span>'
         : '') +
       '<div class="cv-label" style="margin-top:6px;">' +
       esc(state.difficulty || 'HOTSHOT') + ' &middot; SCORE &times;' + (state.difficultyScale || 1) + '</div>' +
-      '<div style="display:flex;gap:22px;justify-content:center;margin-top:12px;">' +
-      '<div><div class="cv-stat__label">MISSIONS</div><div class="cv-stat__value">' + (win ? 7 : state.mission - 1) + ' / 7</div></div>' +
-      '<div><div class="cv-stat__label">FEATS</div><div class="cv-stat__value">' + featsEarned + ' / 10</div></div>' +
-      '<div><div class="cv-stat__label">CHAIN</div><div class="cv-stat__value">x' + state.chain + '</div></div>' +
+      '<div class="cv-body" style="margin-top:10px;">' +
+      (win ? 7 : state.mission - 1) + ' / 7 MISSIONS &nbsp;·&nbsp; ' +
+      featsEarned + ' / 10 FEATS &nbsp;·&nbsp; CHAIN ×' + state.chain +
       '</div></div>';
 
     // STAT GRID: 10 cells from state.stats (PLAIN NUMBER ARRAY on WIN).
@@ -504,9 +503,9 @@ export function createRenderer(canvas) {
       for (let i = 0; i < stats.length && i < 10; i += 1) {
         const s = stats[i];
         const gold = GOLD_IDX[i] ? ' cv-stat__value--gold' : (CYAN_IDX[i] ? ' cv-stat__value--cyan' : '');
-        cells += '<div class="cv-stat"><div class="cv-stat__label">' +
+        cells += '<div class="cv-stat" style="padding:8px 6px;"><div class="cv-stat__label">' +
           esc(STAT_LABELS[i] || ('STAT ' + (i + 1))) + '</div>' +
-          '<div class="cv-stat__value' + gold + '">' +
+          '<div class="cv-stat__value' + gold + '" style="font-size:24px;">' +
           esc(typeof s === 'number'
             ? (i === 9 ? mmss(s) : (i === 4 ? s.toFixed(2) : fmt(s)))
             : s) + '</div></div>';
@@ -543,18 +542,19 @@ export function createRenderer(canvas) {
       '<div style="display:flex;gap:14px;justify-content:center;width:100%;">' +
       feats + goalBox + '</div>';
 
-    // BUTTONS: ONE primary only.
-    const buttons =
-      '<div style="display:flex;gap:14px;align-items:flex-end;">' +
-      '<span class="cta-btn">FLY ANOTHER SEASON</span>' +
-      '<span class="cv-btn-secondary">TITLE &amp; DIFFICULTY</span>' +
-      '</div>';
+    // BOTTOM ROW: route map (short, 100px) beside a buttons column.
+    const bottomRow =
+      '<div style="display:flex;gap:12px;align-items:stretch;width:100%;">' +
+      '<div style="flex:1;min-width:0;overflow:hidden;">' +
+      drawRoute(state).replace('class="cv-route"', 'class="cv-route" style="height:100px"') + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;justify-content:center;width:340px;">' +
+      '<span class="cta-btn" style="min-width:0;width:100%;">FLY ANOTHER SEASON</span>' +
+      '<span class="cv-btn-secondary" style="width:100%;text-align:center;">TITLE &amp; DIFFICULTY</span>' +
+      '</div></div>';
 
     return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;inset:16px;display:flex;' +
-      'flex-direction:column;align-items:center;gap:10px;">' +
-      card + grid + lowerRow +
-      '<div style="width:100%;height:120px;">' + drawRoute(state) + '</div>' +
-      buttons + '</div>');
+      'flex-direction:column;align-items:center;gap:8px;">' +
+      card + grid + lowerRow + bottomRow + '</div>');
   }
 
   // ----------------------------------------------------------------------
