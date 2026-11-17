@@ -162,7 +162,7 @@ export function createRenderer(canvas) {
     const difficulties = DIFFICULTIES
       .map(function (d) {
         const sel = state.difficulty === d.key;
-        return '<span class="chip" style="' + (sel ? 'border:1px solid ' + PALETTE.cta + ';' : 'border:1px solid #17302A;') + '">'
+        return '<span class="chip" style="' + (sel ? 'border-color:var(--cta);' : '') + '">'
           + esc(d.label) + (sel ? ' &bull;' : '') + '</span>';
       })
       .join(' ');
@@ -193,11 +193,10 @@ export function createRenderer(canvas) {
       runs = '<div class="panel" style="padding:12px 18px;margin-top:10px;text-align:center;">' +
         '<div class="label">LAST RUNS</div>' + inner + '</div>';
     }
-    return '<div class="hud-zone" style="position:absolute;left:40px;right:40px;top:120px;">' +
+    return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;left:40px;right:40px;top:120px;">' +
       '<div style="text-align:center;">' +
       '<div class="panel" style="display:inline-block;padding:16px 30px 14px;">' +
-      '<div class="big" style="font-family:' + VIEW.font + ';font-size:64px;letter-spacing:0.04em;color:' + PALETTE.cream + ';">' +
-      'CRIMSON VANGUARD</div>' +
+      '<div class="cv-display cv-t1" style="color:var(--text);">CRIMSON VANGUARD</div>' +
       '<div class="rule" style="width:220px;margin:12px auto;"></div>' +
       '<div class="big" style="font-size:17px;color:' + PALETTE.cream + ';margin-top:8px;">' +
       'Fly the sentinel. Drown the fire line. Hold the city.</div>' +
@@ -221,14 +220,14 @@ export function createRenderer(canvas) {
       '<div class="panel" style="padding:12px 18px;text-align:center;min-width:200px;">' +
       '<div class="muted" style="font-size:13px;">LIVE &mdash; the autopilot is flying Ember Row</div>' +
       '<div class="muted" style="margin-top:4px;font-size:12px;">SEED 86 &mdash; same seed, same run</div>' +
-      '<div class="muted" style="margin-top:4px;font-size:12px;">DAILY DISTRICT &mdash; Cinderfield</div>' +
+      '<div class="muted" style="margin-top:4px;font-size:12px;">DAILY MISSION &mdash; Cinderfield</div>' +
       '</div>' +
       (bestRow || '') + (runs || '') +
       '</div>' +
       '<div style="text-align:center;margin-top:20px;">' +
-      '<span class="cta-btn">TAKE OFF &mdash; ENTER or CLICK</span>' +
+      '<span class="cta-btn">TAKE OFF <span class="cv-cta__hint">ENTER or CLICK</span></span>' +
       '</div>' +
-      '</div></div>';
+      '</div></div>');
   }
 
   // ----------------------------------------------------------------------
@@ -432,9 +431,9 @@ export function createRenderer(canvas) {
     const cta =
       '<div style="display:flex;justify-content:flex-end;"><span class="cta-btn">TAKE OFF</span></div>';
 
-    return '<div class="hud-zone" style="position:absolute;inset:16px;display:flex;flex-direction:column;gap:12px;">' +
+    return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;inset:16px;display:flex;flex-direction:column;gap:12px;">' +
       header + statStrip + middle + drawRoute(state) + cta +
-      '</div>';
+      '</div>');
   }
 
   // ----------------------------------------------------------------------
@@ -551,23 +550,30 @@ export function createRenderer(canvas) {
       '<span class="cv-btn-secondary">TITLE &amp; DIFFICULTY</span>' +
       '</div>';
 
-    return '<div class="hud-zone" style="position:absolute;inset:16px;display:flex;' +
+    return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;inset:16px;display:flex;' +
       'flex-direction:column;align-items:center;gap:10px;">' +
       card + grid + lowerRow +
       '<div style="width:100%;height:120px;">' + drawRoute(state) + '</div>' +
-      buttons + '</div>';
+      buttons + '</div>');
   }
 
   // ----------------------------------------------------------------------
   // drawPaused: simple centred dark panel — "PAUSED — P to resume".
   // ----------------------------------------------------------------------
   function drawPaused(state, best, ticker) {
-    return '<div class="hud-zone" style="position:absolute;top:0;right:0;bottom:0;left:0;' +
+    const missionLine = 'MISSION ' + state.mission + ' / 7' +
+      (MISSIONS[state.mission - 1] ? ' &middot; ' + esc(MISSIONS[state.mission - 1].name) : '');
+    return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;top:0;right:0;bottom:0;left:0;' +
       'display:flex;align-items:center;justify-content:center;">' +
       '<div class="panel" style="padding:22px 44px;text-align:center;">' +
-      '<div class="big" style="font-size:30px;color:' + PALETTE.cream + ';">PAUSED</div>' +
-      '<div class="muted" style="font-size:13px;margin-top:4px;">P &mdash; resume</div>' +
-      '</div></div>';
+      '<div class="cv-display cv-t2">PAUSED</div>' +
+      '<div class="label" style="margin-top:6px;">' + missionLine + '</div>' +
+      '<div class="muted" style="font-size:13px;margin-top:4px;">P or ESC &mdash; resume</div>' +
+      '<div style="display:flex;gap:14px;justify-content:center;margin-top:18px;">' +
+      '<span class="cta-btn" style="min-width:200px;">RESUME</span>' +
+      '<span class="cv-btn-secondary">QUIT TO TITLE</span>' +
+      '</div>' +
+      '</div></div>');
   }
 
   // ----------------------------------------------------------------------
