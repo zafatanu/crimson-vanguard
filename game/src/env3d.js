@@ -35,19 +35,19 @@ export function buildEnvironment(scene, PALETTE) {
   roadA.position.set(0, 0.02, -2);
   roadA.receiveShadow = true;
   group.add(roadA);
-  const roadB = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.02, 52), roadMat);
-  roadB.position.set(6, 0.02, 2);
+  const roadB = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.02, 62), roadMat);
+  roadB.position.set(6, 0.02, 7);
   roadB.receiveShadow = true;
   group.add(roadB);
 
   // SIDEWALKS: thin roof-colored boxes flanking both road strips (4 strips).
   const sidewalkMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 1 });
   const swBox = new THREE.BoxGeometry(52, 0.06, 1.2);
-  const swBox2 = new THREE.BoxGeometry(1.2, 0.06, 52);
+  const swBox2 = new THREE.BoxGeometry(1.2, 0.06, 62);
   const sidewalks = [
     [0, -2, swBox, 0, -3.3], [0, -2, swBox, 0, -0.7],
     [0, 2, swBox, 0, 0.7], [0, 2, swBox, 0, 3.3],
-    [6, 2, swBox2, 4.6, 0], [6, 2, swBox2, 7.4, 0],
+    [6, 7, swBox2, 4.6, 0], [6, 7, swBox2, 7.4, 0],
   ];
   for (const [rx, rz, geo, ox, oz] of sidewalks) {
     const s = new THREE.Mesh(geo, sidewalkMat);
@@ -81,7 +81,7 @@ export function buildEnvironment(scene, PALETTE) {
   const dashMat = new THREE.MeshStandardMaterial({ color: PALETTE.gold, roughness: 0.6 });
   const dashGeo = new THREE.BoxGeometry(0.16, 0.04, 0.7);
   const dashGeo2 = new THREE.BoxGeometry(0.7, 0.04, 0.16);
-  for (let k = 0; k < 8; k += 1) {
+  for (let k = 0; k < 10; k += 1) {
     const o = -21 + k * 6;
     const d1 = new THREE.Mesh(dashGeo, dashMat);
     d1.position.set(o, 0.04, -2);
@@ -181,7 +181,7 @@ export function buildEnvironment(scene, PALETTE) {
   const winWarmRow = [false, true, false, false]; // 1 in 4 windows warm.
   for (let i = 0; i < cityPos.length; i += 1) {
     const [bx, bz] = cityPos[i];
-    const h = 1.2 + ((i * 37) % 23) / 10 + (bz < -8 ? 0.6 : 0);
+    const h = 1.2 + ((i * 37) % 23) / 10 + (bz < -8 ? 1.8 : 0);
     const size = 2.2 + ((i * 17) % 13) / 10;
     const jx = (hash(i * 12.9898) - 0.5) * 0.8;
     const jz = (hash(i * 78.233) - 0.5) * 0.8;
@@ -206,17 +206,35 @@ export function buildEnvironment(scene, PALETTE) {
     b.rotation.y = rot;
     b.add(mk(new THREE.BoxGeometry(size, h, size), facade, 0, h / 2, 0));
     if (type === 0) {
-      b.add(mk(new THREE.BoxGeometry(size + 0.3, 0.12, size + 0.3), roof, 0, h + 0.06, 0));
+      b.add(mk(new THREE.BoxGeometry(size + 0.8, 0.12, size + 0.8), roof, 0, h + 0.06, 0));
     } else if (type === 1) {
       const pyr = mk(new THREE.ConeGeometry(size * 0.75, 0.8, 4), roof, 0, h + 0.4, 0);
       pyr.rotation.y = Math.PI / 4;
       b.add(pyr);
     } else if (type === 2) {
-      b.add(mk(new THREE.BoxGeometry(size * 0.6, 0.7, size * 0.6), facade, 0, h + 0.35, 0));
-      b.add(mk(new THREE.BoxGeometry(size * 0.6 + 0.15, 0.1, size * 0.6 + 0.15), roof, 0, h + 0.75, 0));
+      const tierH = bz < -8 ? 1.0 : 0.7;
+      b.add(mk(new THREE.BoxGeometry(size * 0.6, tierH, size * 0.6), facade, 0, h + tierH / 2, 0));
+      b.add(mk(new THREE.BoxGeometry(size * 0.6 + 0.8, 0.1, size * 0.6 + 0.8), roof, 0, h + tierH + 0.05, 0));
+      if (bz < -8) {
+        b.add(mk(new THREE.BoxGeometry(size * 0.4, 0.8, size * 0.4), facade, 0, h + tierH + 0.4, 0));
+        b.add(mk(new THREE.BoxGeometry(size * 0.4 + 0.8, 0.1, size * 0.4 + 0.8), roof, 0, h + tierH + 0.85, 0));
+      }
     } else {
-      b.add(mk(new THREE.BoxGeometry(size + 0.3, 0.12, size + 0.3), roof, 0, h + 0.06, 0));
+      b.add(mk(new THREE.BoxGeometry(size + 0.8, 0.12, size + 0.8), roof, 0, h + 0.06, 0));
       b.add(mk(new THREE.BoxGeometry(0.25, 0.8, 0.25), roofMat[1], 0, h + 0.4, 0));
+    }
+    const re = i % 4;
+    if (type === 0 || type === 3) {
+      if (re === 0) {
+        b.add(mk(new THREE.BoxGeometry(0.28, 0.7, 0.28), roofMat[1], size * 0.25, h + 0.45, size * 0.2));
+      } else if (re === 1) {
+        b.add(mk(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), roofMat[1], size * 0.25, h + 0.6, -size * 0.2));
+        b.add(mk(new THREE.SphereGeometry(0.08, 6, 5), roofMat[0], size * 0.25, h + 1.15, -size * 0.2));
+      } else if (re === 2) {
+        b.add(mk(new THREE.BoxGeometry(0.55, 0.3, 0.45), roofMat[1], -size * 0.2, h + 0.3, -size * 0.2));
+      } else {
+        b.add(mk(new THREE.CylinderGeometry(0.32, 0.32, 0.65, 10), roofMat[2], -size * 0.25, h + 0.45, size * 0.25));
+      }
     }
     const winCount = 2 + (i % 3);
     const winRows = h > 2.2 ? [h * 0.55, h * 0.8] : [h * 0.55];
@@ -262,6 +280,7 @@ export function buildEnvironment(scene, PALETTE) {
     [-18, -12], [-14, -14], [-10, -16], [-5, -16], [-1, -18], [-6, -22],
     [2, -4], [8, -4], [14, -2], [20, -2], [26, -2], [-24, -4],
     [-8, 16], [-4, 22], [4, 16], [10, 22], [22, 14], [26, 10],
+    [11, 33], [12, 36],
   ];
   // 3 burnt tree spots nearest the burnt buildings (city boxes 2, 11, 19).
   const burntTreeIdx = [2, 9, 15];
@@ -350,8 +369,9 @@ export function buildEnvironment(scene, PALETTE) {
     new THREE.MeshStandardMaterial({ color: PALETTE.facadeSlate, roughness: 0.7 }),
     new THREE.MeshStandardMaterial({ color: PALETTE.facadeBrick, roughness: 0.7 }),
     new THREE.MeshStandardMaterial({ color: PALETTE.steel, roughness: 0.5 }),
+    new THREE.MeshStandardMaterial({ color: PALETTE.facadeOchre, roughness: 0.7 }),
   ];
-  const carPos = [[-4, -0.8, 0.3], [10, 3.2, -0.2], [16, -3.4, 0.1]];
+  const carPos = [[-4, -0.8, 0.3], [10, 3.2, -0.2], [16, -3.4, 0.1], [6, 34, 1.57]];
   const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 0.9);
   const cabinGeo = new THREE.BoxGeometry(1.0, 0.4, 0.8);
   const wheelGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.15, 12);
@@ -458,6 +478,22 @@ export function buildEnvironment(scene, PALETTE) {
     group.add(s);
   }
 
+  // --- Clouds (7 flat white puffs drifting slowly across the sky) ---
+  const clouds = [];
+  const cloudMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 1 });
+  const cloudGeo = new THREE.IcosahedronGeometry(1.6, 0);
+  const cloudPos = [
+    [-20, 15, -25], [-8, 17, -10], [4, 14, -28], [14, 16, -5],
+    [22, 15, -20], [-2, 18, 2], [18, 13, -15],
+  ];
+  for (const [cx, cy, cz] of cloudPos) {
+    const c = new THREE.Mesh(cloudGeo, cloudMat);
+    c.scale.set(1.6, 0.35, 1);
+    c.position.set(cx, cy, cz);
+    group.add(c);
+    clouds.push({ mesh: c, baseX: cx });
+  }
+
   // --- Coolant towers (the CHARGE targets — match world.js exactly) ----------
   const towers = [];
   const towerPos = [[-14, -8], [12, -10], [0, 12]];
@@ -493,6 +529,9 @@ export function buildEnvironment(scene, PALETTE) {
       t.ringMat.emissiveIntensity = 1.6 + Math.sin(time * 2 + i) * 0.6;
     });
     reservoirMat.opacity = 0.92 + Math.sin(time * 1.3) * 0.05;
+    clouds.forEach((c) => {
+      c.mesh.position.x = -32 + (((c.baseX + 32 + time * 0.25) % 64) + 64) % 64;
+    });
   }
 
   return { towers, reservoir: { x: 16, z: 10, r: 4, mesh: reservoirMesh }, update };
