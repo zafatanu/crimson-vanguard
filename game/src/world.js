@@ -2,7 +2,7 @@
 // Steers a red iron sentinel, charges coolant, blasts the fire line, holds
 // 7 missions against 3 named infernos. Pure state + seeded RNG; no DOM, no
 // canvas, no Three.js. The renderer and shots.js consume `state` only.
-import { MISSIONS, BOSSES, REFITS, DIFFICULTIES, RIVALS } from './catalog.js';
+import { MISSIONS, BOSSES, REFITS, DIFFICULTIES, RIVALS, ROUTE_FORKS } from './catalog.js';
 import { createRandom } from './random.js';
 
 const GLOBAL_SCALE = { ROOKIE: 0.75, HOTSHOT: 1, INFERNO: 1.5 };
@@ -94,7 +94,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     for (let index = 0; index < row.cores; index += 1) {
       const bossHp = row.boss ? BOSSES.find((b) => b.name === row.boss).hp : 0;
       const isBoss = !!row.boss && (state.mission === 7 || index === 0);
-      const hp = isBoss ? Math.min(bossHp, 1500) : 600;
+      const hp = isBoss ? Math.min(bossHp, 1200) : 600;
       state.cores.push({
         x: -20 + index * 20, z: 26, hp, maxHp: hp, broken: false, boss: isBoss,
       });

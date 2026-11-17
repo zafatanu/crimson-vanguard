@@ -27,12 +27,6 @@ function nearestCharge(state) {
 function pilotAction(world, state) {
   if (state.phase !== 'fly') return { blast: false, boost: false, tx: state.hero.x, tz: state.hero.z };
 
-  // Run low? Refill from the nearest tower or reservoir first.
-  if (state.tank < LOW_TANK) {
-    const target = nearestCharge(state);
-    if (target) return { blast: false, boost: false, tx: target.x, tz: target.z };
-  }
-
   // Find the nearest unbroken core to blast.
   let core = null;
   let coreD = Infinity;
@@ -42,6 +36,13 @@ function pilotAction(world, state) {
     if (d < coreD) { coreD = d; core = c; }
   }
   if (!core) return { blast: false, boost: false, tx: state.hero.x, tz: state.hero.z };
+
+  // Charge to (nearly) full: go when low, stay while in a charge zone.
+  const inCharge = !!state.chargeZone;
+  if (state.tank < LOW_TANK || (inCharge && state.tank < 95)) {
+    const target = nearestCharge(state);
+    if (target) return { blast: false, boost: false, tx: target.x, tz: target.z };
+  }
 
   // Within blast range and roughly facing the core? Hold blast while we sit.
   if (coreD <= BLAST_RANGE) {
@@ -60,6 +61,7 @@ function run(world, seed, stopWhen, allowActions = true) {
   world.begin(seed, 'HOTSHOT');
   let elapsed = 0;
   let pilotClock = 0;
+  let last = { blast: false, boost: false, tx: 0, tz: 0 };
   while (elapsed < MAX_RUN_SECONDS && !world.state.outcome) {
     if (world.state.phase === 'draft') {
       // Draft: pick a refit, pick a route fork, then lift off.
@@ -75,18 +77,14 @@ function run(world, seed, stopWhen, allowActions = true) {
     if (allowed(world.state)) {
       pilotClock -= STEP;
       if (pilotClock <= 0) {
-        const action = pilotAction(world, world.state);
-        world.step(STEP, {
-          mx: action.tx, mz: action.tz, blast: action.blast, boost: action.boost,
-        });
+        last = pilotAction(world, world.state);
         pilotClock = PILOT_INTERVAL;
-      } else {
-        world.step(STEP, {});
       }
     } else {
-      // allowActions off — the pilot simply sits still and lets the world turn.
-      world.step(STEP, {});
+      // allowActions off — the pilot freezes, hovering in place without blasting.
+      last = { blast: false, boost: false, tx: world.state.hero.x, tz: world.state.hero.z };
     }
+    world.step(STEP, { mx: last.tx, mz: last.tz, blast: last.blast, boost: last.boost });
     elapsed += STEP;
     if (stopWhen && stopWhen(world.state)) break;
   }
@@ -96,7 +94,7 @@ function run(world, seed, stopWhen, allowActions = true) {
 // Play a real loss: pilot plays missions 1-6 normally, then on mission 7
 // stops blasting entirely (allowActions=false), so THE INFERNO HEART consumes
 // the cores and the rain front closes in. Loss comes from the world's own rules.
-function runToLoss(world, seed) {
+export function runToLoss(world, seed) {
   run(world, seed, (state) => Boolean(state.outcome), (state) => state.mission < 7);
   return {
     score: world.state.score,
@@ -104,5 +102,61 @@ function runToLoss(world, seed) {
     result: world.state.outcome || 'LOSS',
     seed: world.state.seed,
     time: Math.floor(world.state.runTime),
+  };
+}
+
+// Play a full win: the smart pilot flies the whole season to a WIN outcome.
+export function runToWin(world, seed) {
+  run(world, seed, (state) => Boolean(state.outcome));
+  return {
+    score: world.state.score,
+    mission: world.state.mission,
+    result: world.state.outcome || 'WIN',
+    seed: world.state.seed,
+    time: Math.floor(world.state.runTime),
+  };
+}
+
+// Stage a deterministic scene for the screenshot camera, mirroring ANVILSONG's
+// shots.js pattern. Returns { screen, best, lastRuns, ticker } and leaves
+// world.state staged at the scene.
+export function stageShot(name, world, seed = 86) {
+  if (name === 'play') {
+    run(world, seed, (state) => state.mission === 7 &&
+      state.cores.some((c) => c.isBoss && c.hp <= c.maxHp * 0.6) &&
+      state.chain >= 8);
+    if (world.state.mission < 7) {
+      run(world, seed, (state) => state.mission === 7);
+    }
+    const { hero } = world.state;
+    for (let i = 0; i < 1200; i++) {
+      if (world.state.phase !== 'fly') break;
+      world.step(STEP, { mx: hero.x, mz: hero.z, blast: false, boost: false });
+    }
+    return { screen: SCREEN_PLAY, best: 0, lastRuns: [], ticker: world.state.ticker };
+  }
+  if (name === 'draft') {
+    run(world, seed, (state) => state.phase === 'draft' && state.mission === 2);
+    return { screen: SCREEN_DRAFT, best: 0, lastRuns: [], ticker: world.state.ticker };
+  }
+  if (name === 'end') {
+    const loss = runToLoss(world, seed + 1);
+    const win = runToWin(world, seed);
+    return {
+      screen: SCREEN_OVER,
+      best: win.score,
+      lastRuns: [loss, win],
+      ticker: 'SEASON OVER. THE INFERNO HEART FALLS. Final score ' + win.score + '.',
+    };
+  }
+  // 'start' and default: win the season, then reset to the title live demo.
+  const run = runToWin(world, seed);
+  world.begin(seed, 'HOTSHOT');
+  for (let i = 0; i < 300; i++) world.idle(STEP);
+  return {
+    screen: SCREEN_TITLE,
+    best: run.score,
+    lastRuns: [run],
+    ticker: 'CRIMSON VANGUARD. Season 7 missions. Choose a difficulty; press ENTER to take off.',
   };
 }
