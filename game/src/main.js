@@ -241,8 +241,8 @@ function step() {
   } else if (screen === SCREEN_PLAY) {
     const target = input.worldTarget();
     world.step(STEP * speed, {
-      mx: target.x,
-      mz: target.z,
+      mx: target.mx,
+      mz: target.mz,
       keys: {},
       blast: input.isBlasting(),
       boost: input.isBoosting(),
