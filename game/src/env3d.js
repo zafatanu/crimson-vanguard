@@ -66,45 +66,88 @@ export function buildEnvironment(scene, PALETTE) {
   reservoirRim.position.set(16, 0.03, 10);
   group.add(reservoirRim);
 
-  // --- City boxes (LOW, fixed grid, avoid centre plaza / reservoir / towers) --
-  const roofColors = [PALETTE.roof, PALETTE.tan, PALETTE.grass];
-  const roofMatCache = roofColors.map((c) =>
-    new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 })
-  );
-  // [x, z, w, d, h, roofIndex]
-  const cityBoxes = [
-    [-20, -16, 3, 3, 1.6, 0], [-16, -19, 2.4, 2.4, 1.2, 1], [-20, -8, 3, 3, 2.2, 0],
-    [-17, -2, 2.6, 2.6, 1.0, 1], [-12, -6, 3, 3, 1.4, 0], [-8, -14, 2.6, 2.6, 1.8, 1],
-    [-4, -20, 3, 3, 1.1, 0], [-4, -12, 2.4, 2.4, 2.0, 1], [0, -8, 2.6, 2.6, 1.3, 2],
-    [0, 6, 3, 3, 1.7, 0], [-6, 10, 2.6, 2.6, 1.2, 1], [-14, 8, 3, 3, 2.0, 0],
-    [-20, 16, 2.6, 2.6, 1.0, 1], [4, -2, 3, 3, 1.9, 0], [10, -8, 2.6, 2.6, 1.3, 1],
-    [12, -18, 3, 3, 1.5, 0], [18, -6, 2.6, 2.6, 2.0, 1], [20, 6, 3, 3, 1.1, 0],
-    [12, 2, 2.6, 2.6, 1.6, 1], [6, 10, 3, 3, 1.2, 0], [14, 16, 3, 3, 1.8, 1],
-    [20, 18, 2.6, 2.6, 1.0, 2], [-10, -20, 2.6, 2.6, 1.9, 2], [-22, 2, 2.4, 2.4, 1.2, 0],
-    [18, 12, 2.4, 2.4, 1.5, 1], [-8, 18, 2.6, 2.6, 1.7, 0],
+  // --- City kit (26 deterministic buildings from fixed cells) ------------------
+  const fract = (v) => v - Math.floor(v);
+  const hash = (n) => fract(Math.sin(n) * 43758.5453);
+  const facadeMat = [
+    PALETTE.facadeCream, PALETTE.facadeBrick, PALETTE.facadeOchre,
+    PALETTE.facadeSage, PALETTE.facadeSlate, PALETTE.facadeWarmWhite,
+  ].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }));
+  const roofMat = [PALETTE.roofTerra, PALETTE.roofDark, PALETTE.roofGreen]
+    .map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }));
+  const windowDarkMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.windowDark, roughness: 0.6,
+  });
+  const windowWarmMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.windowWarm, emissive: PALETTE.windowWarm, emissiveIntensity: 1.6,
+  });
+  const charcoalMat = new THREE.MeshStandardMaterial({ color: PALETTE.charcoal, roughness: 0.9 });
+  const fireMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 2.0,
+  });
+  const winGeo = new THREE.BoxGeometry(0.35, 0.5, 0.06);
+  // Same 26 cells as before so gameplay/cameras don't shift.
+  const cityPos = [
+    [-20, -16], [-16, -19], [-20, -8], [-17, -2], [-12, -6], [-8, -14],
+    [-4, -20], [-4, -12], [0, -8], [0, 6], [-6, 10], [-14, 8],
+    [-20, 16], [4, -2], [10, -8], [12, -18], [18, -6], [20, 6],
+    [12, 2], [6, 10], [14, 16], [20, 18], [-10, -20], [-22, 2],
+    [18, 12], [-8, 18],
   ];
-  for (const [bx, bz, bw, bd, bh, roofIdx] of cityBoxes) {
-    const box = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, bh, bd),
-      roofMatCache[roofIdx]
-    );
-    box.position.set(bx, bh / 2, bz);
-    box.castShadow = true;
-    box.receiveShadow = true;
-    group.add(box);
-  }
-
-  // Gold edge trim on the tallest 6 boxes (a slightly larger flat box on top).
-  const tallestIdx = [1, 3, 7, 9, 16, 12, 14, 22, 10, 5, 20, 0];
-  const goldTrimMat = new THREE.MeshStandardMaterial({ color: PALETTE.gold, roughness: 0.5 });
-  for (let k = 0; k < 6; k += 1) {
-    const i = tallestIdx[k];
-    const [bx, bz, bw, bd, bh] = cityBoxes[i];
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.2, 0.06, bd + 0.2), goldTrimMat);
-    trim.position.set(bx, bh + 0.03, bz);
-    trim.castShadow = true;
-    trim.receiveShadow = true;
-    group.add(trim);
+  const burntIdx = [2, 11, 19];
+  const winWarmRow = [false, true, false, false]; // 1 in 4 windows warm.
+  for (let i = 0; i < cityPos.length; i += 1) {
+    const [bx, bz] = cityPos[i];
+    const h = 1.2 + ((i * 37) % 23) / 10 + (bz < -8 ? 0.6 : 0);
+    const size = 2.2 + ((i * 17) % 13) / 10;
+    const jx = (hash(i * 12.9898) - 0.5) * 0.8;
+    const jz = (hash(i * 78.233) - 0.5) * 0.8;
+    const rot = (hash(i * 39.346) - 0.5) * 0.16;
+    const burnt = burntIdx.includes(i);
+    const type = i % 4;
+    const fi = i % 6;
+    const facade = burnt ? charcoalMat : facadeMat[fi];
+    const roof = burnt ? roofMat[1]
+      : (fi === 1 || fi === 2) ? [roofMat[1], roofMat[2]][i % 2]
+      : (fi === 3 || fi === 4) ? [roofMat[0], roofMat[1]][i % 2]
+      : roofMat[i % 3];
+    const mk = (geo, mat, x, y, z) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    };
+    const b = new THREE.Group();
+    b.position.set(bx + jx, 0, bz + jz);
+    b.rotation.y = rot;
+    b.add(mk(new THREE.BoxGeometry(size, h, size), facade, 0, h / 2, 0));
+    if (type === 0) {
+      b.add(mk(new THREE.BoxGeometry(size + 0.3, 0.12, size + 0.3), roof, 0, h + 0.06, 0));
+    } else if (type === 1) {
+      const pyr = mk(new THREE.ConeGeometry(size * 0.75, 0.8, 4), roof, 0, h + 0.4, 0);
+      pyr.rotation.y = Math.PI / 4;
+      b.add(pyr);
+    } else if (type === 2) {
+      b.add(mk(new THREE.BoxGeometry(size * 0.6, 0.7, size * 0.6), facade, 0, h + 0.35, 0));
+      b.add(mk(new THREE.BoxGeometry(size * 0.6 + 0.15, 0.1, size * 0.6 + 0.15), roof, 0, h + 0.75, 0));
+    } else {
+      b.add(mk(new THREE.BoxGeometry(size + 0.3, 0.12, size + 0.3), roof, 0, h + 0.06, 0));
+      b.add(mk(new THREE.BoxGeometry(0.25, 0.8, 0.25), roofMat[1], 0, h + 0.4, 0));
+    }
+    const winCount = 2 + (i % 3);
+    const winRows = h > 2.2 ? [h * 0.55, h * 0.8] : [h * 0.55];
+    for (const wy of winRows) {
+      for (let k = 0; k < winCount; k += 1) {
+        const wx = (k - (winCount - 1) / 2) * (size * 0.28);
+        const warm = burnt || winWarmRow[k % 4];
+        b.add(mk(winGeo, warm ? windowWarmMat : windowDarkMat, wx, wy, size / 2 + 0.03));
+      }
+    }
+    if (burnt) {
+      b.add(mk(new THREE.ConeGeometry(0.3, 0.7, 8), fireMat, 0, h + 0.35, 0));
+    }
+    group.add(b);
   }
 
   // --- Trees (sphere canopy on a dark cone trunk, along roads & clearings) ---
