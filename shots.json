@@ -1,5 +1,6 @@
 [
-  { "name": "1-start.jpg", "query": "?shot=start&seed=1" },
-  { "name": "2-play.jpg", "query": "?shot=play&seed=1" },
-  { "name": "3-end.jpg", "query": "?shot=end&seed=1" }
+  { "name": "1-play.jpg", "query": "?shot=play&seed=86", "viewport": "1280x800" },
+  { "name": "2-title.jpg", "query": "?shot=start&seed=86", "viewport": "1280x800" },
+  { "name": "3-draft.jpg", "query": "?shot=draft&seed=86", "viewport": "1280x800" },
+  { "name": "4-results.jpg", "query": "?shot=end&seed=86", "viewport": "1280x800" }
 ]
