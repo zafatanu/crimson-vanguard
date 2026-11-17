@@ -40,6 +40,89 @@ export function buildEnvironment(scene, PALETTE) {
   roadB.receiveShadow = true;
   group.add(roadB);
 
+  // SIDEWALKS: thin roof-colored boxes flanking both road strips (4 strips).
+  const sidewalkMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 1 });
+  const swBox = new THREE.BoxGeometry(52, 0.06, 1.2);
+  const swBox2 = new THREE.BoxGeometry(1.2, 0.06, 52);
+  const sidewalks = [
+    [0, -2, swBox, 0, -3.3], [0, -2, swBox, 0, -0.7],
+    [0, 2, swBox, 0, 0.7], [0, 2, swBox, 0, 3.3],
+    [6, 2, swBox2, 4.6, 0], [6, 2, swBox2, 7.4, 0],
+  ];
+  for (const [rx, rz, geo, ox, oz] of sidewalks) {
+    const s = new THREE.Mesh(geo, sidewalkMat);
+    s.position.set(rx + ox, 0.03, rz + oz);
+    s.receiveShadow = true;
+    group.add(s);
+  }
+
+  // ZEBRA CROSSINGS at intersections (6, -2) and (0, 2).
+  const zebraMat = new THREE.MeshStandardMaterial({ color: PALETTE.cream, roughness: 1 });
+  const zebraGeo = new THREE.BoxGeometry(0.5, 0.06, 0.28);
+  const zebraSpots = [
+    [6, -2], [0, 2],
+  ];
+  for (const [zx, zz] of zebraSpots) {
+    for (let k = 0; k < 5; k += 1) {
+      const off = (k - 2) * 0.55;
+      const z1 = new THREE.Mesh(zebraGeo, zebraMat);
+      z1.position.set(zx + off, 0.04, zz);
+      z1.receiveShadow = true;
+      group.add(z1);
+      const z2 = new THREE.Mesh(zebraGeo, zebraMat);
+      z2.position.set(zx, 0.04, zz + off);
+      z2.rotation.y = Math.PI / 2;
+      z2.receiveShadow = true;
+      group.add(z2);
+    }
+  }
+
+  // CENTER LINES: dashed gold boxes along both roads (8 dashes each).
+  const dashMat = new THREE.MeshStandardMaterial({ color: PALETTE.gold, roughness: 0.6 });
+  const dashGeo = new THREE.BoxGeometry(0.16, 0.04, 0.7);
+  const dashGeo2 = new THREE.BoxGeometry(0.7, 0.04, 0.16);
+  for (let k = 0; k < 8; k += 1) {
+    const o = -21 + k * 6;
+    const d1 = new THREE.Mesh(dashGeo, dashMat);
+    d1.position.set(o, 0.04, -2);
+    d1.receiveShadow = true;
+    group.add(d1);
+    const d2 = new THREE.Mesh(dashGeo2, dashMat);
+    d2.position.set(6, 0.04, o);
+    d2.receiveShadow = true;
+    group.add(d2);
+  }
+
+  // PUDDLES: 3 flat circles near the reservoir.
+  const puddleMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.reservoir, roughness: 0.15, metalness: 0.4, transparent: true,
+  });
+  const puddles = [[12, 8, 0.9], [19, 7, 0.7], [14, 14, 0.6]];
+  for (const [px, pz, pr] of puddles) {
+    const p = new THREE.Mesh(new THREE.CircleGeometry(pr, 24), puddleMat);
+    p.rotation.x = -Math.PI / 2;
+    p.position.set(px, 0.03, pz);
+    p.receiveShadow = true;
+    group.add(p);
+  }
+
+  // DEBRIS: 8 small dark boxes near the burnt buildings.
+  const debrisMat = new THREE.MeshStandardMaterial({ color: PALETTE.road, roughness: 1 });
+  const debrisPos = [
+    [-17, -4, 0.3, 0.2, 0.5], [-22, 4, 0.2, 0.4, 0.8],
+    [-18, 2, 0.4, 0.3, 1.2], [-21, -6, 0.25, 0.35, 0.3],
+    [8, 4, 0.35, 0.3, 2.0], [5, 12, 0.3, 0.4, 0.9],
+    [4, 14, 0.2, 0.25, 1.5], [7, 10, 0.4, 0.3, 2.0],
+  ];
+  for (const [dx, dz, dw, dh, r] of debrisPos) {
+    const d = new THREE.Mesh(new THREE.BoxGeometry(dw, dh, dw), debrisMat);
+    d.position.set(dx, dh / 2, dz);
+    d.rotation.y = r;
+    d.castShadow = true;
+    d.receiveShadow = true;
+    group.add(d);
+  }
+
   // Gold trim ring around the whole ground.
   const trimRing = new THREE.Mesh(
     new THREE.TorusGeometry(14, 0.18, 8, 64),
@@ -150,25 +233,78 @@ export function buildEnvironment(scene, PALETTE) {
     group.add(b);
   }
 
-  // --- Trees (sphere canopy on a dark cone trunk, along roads & clearings) ---
-  const treeCanopyMat = new THREE.MeshStandardMaterial({ color: PALETTE.grass, roughness: 1 });
-  const treeTrunkMat = new THREE.MeshStandardMaterial({ color: PALETTE.road, roughness: 1 });
+  // --- Trees (3 species by spot index, deterministic, NO Math.random) --------
+  const mk = (geo, mat, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  };
+  const canopyA = new THREE.MeshStandardMaterial({ color: '#8FA968', roughness: 1 });
+  const canopyB = new THREE.MeshStandardMaterial({ color: '#7A9A58', roughness: 1 });
+  const canopyC = new THREE.MeshStandardMaterial({ color: '#A3BC78', roughness: 1 });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: PALETTE.road, roughness: 1 });
+  const charcoalMat2 = new THREE.MeshStandardMaterial({ color: PALETTE.charcoal, roughness: 1 });
+  const emberMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 2,
+  });
+  const trunkGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.8, 8);
+  const coneGeoA = new THREE.ConeGeometry(1.0, 0.9, 10);
+  const coneGeoB = new THREE.ConeGeometry(0.75, 0.9, 10);
+  const coneGeoC = new THREE.ConeGeometry(0.5, 0.9, 10);
+  const icoGeoA = new THREE.IcosahedronGeometry(0.7, 0);
+  const icoGeoB = new THREE.IcosahedronGeometry(0.55, 0);
+  const icoGeoC = new THREE.IcosahedronGeometry(0.5, 0);
+  const sphereGeoA = new THREE.SphereGeometry(1.1, 12, 10);
+  const sphereGeoC = new THREE.SphereGeometry(0.8, 12, 10);
   const treeSpots = [
     [-18, -12], [-14, -14], [-10, -16], [-5, -16], [-1, -18], [-6, -22],
     [2, -4], [8, -4], [14, -2], [20, -2], [26, -2], [-24, -4],
     [-8, 16], [-4, 22], [4, 16], [10, 22], [22, 14], [26, 10],
   ];
-  for (const [tx, tz] of treeSpots) {
-    const trunk = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.9, 8), treeTrunkMat);
-    trunk.position.set(tx, 0.6, tz);
-    trunk.castShadow = true;
-    trunk.receiveShadow = true;
-    group.add(trunk);
-    const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 10), treeCanopyMat);
-    canopy.position.set(tx, 1.9, tz);
-    canopy.castShadow = true;
-    canopy.receiveShadow = true;
-    group.add(canopy);
+  // 3 burnt tree spots nearest the burnt buildings (city boxes 2, 11, 19).
+  const burntTreeIdx = [2, 9, 15];
+  for (let i = 0; i < treeSpots.length; i += 1) {
+    const [tx, tz] = treeSpots[i];
+    const burnt = burntTreeIdx.includes(i);
+    if (burnt) {
+      const bt = mk(trunkGeo, charcoalMat2, tx, 0.5, tz);
+      bt.rotation.z = 0.18;
+      bt.rotation.x = -0.12;
+      group.add(bt);
+      const bc = mk(coneGeoA, charcoalMat2, tx, 1.35, tz);
+      group.add(bc);
+      const bf = mk(new THREE.SphereGeometry(0.1, 8, 6), emberMat, tx, 1.75, tz);
+      group.add(bf);
+    } else {
+      group.add(mk(trunkGeo, trunkMat, tx, 0.4, tz));
+      const kind = i % 3;
+      if (kind === 0) {
+        // CONE STACK: 3 stacked cones, tones A/B/C top-to-bottom.
+        group.add(mk(coneGeoA, canopyA, tx, 1.35, tz));
+        group.add(mk(coneGeoB, canopyB, tx, 2.15, tz));
+        group.add(mk(coneGeoC, canopyC, tx, 2.85, tz));
+      } else if (kind === 1) {
+        // POLYHEDRON CLUSTER: 3 icosahedra clustered as one irregular crown.
+        const g = new THREE.Group();
+        g.position.set(tx, 0, tz);
+        g.rotation.y = (i * 47) % 360;
+        const o1 = mk(icoGeoA, canopyA, 0, 1.6, 0);
+        const o2 = mk(icoGeoB, canopyB, 0.4, 2.1, 0.2);
+        const o3 = mk(icoGeoC, canopyC, -0.3, 1.9, 0.4);
+        g.add(o1); g.add(o2); g.add(o3);
+        group.add(g);
+      } else {
+        // AGGREGATED SPHERE (far spots only): 2 overlapping spheres.
+        const g = new THREE.Group();
+        g.position.set(tx, 0, tz);
+        const s1 = mk(sphereGeoA, canopyA, 0, 1.5, 0);
+        const s2 = mk(sphereGeoC, canopyC, 0.3, 1.7, 0.2);
+        g.add(s1); g.add(s2);
+        group.add(g);
+      }
+    }
   }
 
   // --- Coolant towers (the CHARGE targets — match world.js exactly) ----------
