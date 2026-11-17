@@ -12,14 +12,14 @@ const HERO_SPEED = 9;
 const BOOST_SPEED = 14.4; // 1.6x
 const BOOST_DRAIN = 6;
 const BLAST_DRAIN = 22;
-const CHARGE_RATE = 15;
+const CHARGE_RATE = 45;
 const BLAST_RANGE = 9;
 const BLAST_HALF_ANGLE = (25 * Math.PI) / 180;
-const CORE_DPS = 30;
+const CORE_DPS = 150;
 const HOME_BURN_TIME = 20;
 const FIRE_SPREAD_INTERVAL = 2.5;
 const DOSE_SCORE = 55;
-const CORE_BONUS = 1500;
+const CORE_BONUS = 1000;
 const HOME_SAVED_BONUS = 120;
 const WISP_DAMAGE = 4;
 const WISP_INVULN = 1;
@@ -43,7 +43,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     chargeZone: null, towers: [{ x: -14, z: -8, r: 3.5 }, { x: 12, z: -10, r: 3.5 }, { x: 0, z: 12, r: 3.5 }],
     reservoir: { x: 16, z: 10, r: 4 }, routeTaken: Array(7).fill(null),
     fireSpreadClock: 0, wispSpawnClock: 0, chainClock: 0, flameSerial: 1,
-    wispSerial: 1, invuln: 0, phaseTime: 0,
+    wispSerial: 1, invuln: 0, phaseTime: 0, burnClock: 0, scoopAcc: 0,
   };
 
   function setTicker(message) { state.ticker = message; }
@@ -92,8 +92,9 @@ export function createWorld(initialRandom, initialSeed = 86) {
     state.bossMaxHp = 0;
     // Place cores along the near edge, spread out.
     for (let index = 0; index < row.cores; index += 1) {
-      const isBoss = index === 0 && row.boss;
-      const hp = row.boss ? BOSSES.find((b) => b.name === row.boss).hp : 900;
+      const bossHp = row.boss ? BOSSES.find((b) => b.name === row.boss).hp : 0;
+      const isBoss = !!row.boss && (state.mission === 7 || index === 0);
+      const hp = isBoss ? Math.min(bossHp, 1500) : 600;
       state.cores.push({
         x: -20 + index * 20, z: 26, hp, maxHp: hp, broken: false, boss: isBoss,
       });
@@ -105,10 +106,10 @@ export function createWorld(initialRandom, initialSeed = 86) {
       state.bossMaxHp = boss.hp;
     }
     // Seed the flame line from the seeded RNG, in a band in front of the cores.
-    const band = 200;
+    const band = 56;
     for (let index = 0; index < Math.min(row.flames, 200); index += 1) {
       state.flames.push({
-        x: -28 + random() * band, z: 22 + random() * 10, heat: 1,
+        x: -28 + random() * band, z: 22 + random() * 10,
         id: state.flameSerial++,
       });
     }
@@ -131,21 +132,6 @@ export function createWorld(initialRandom, initialSeed = 86) {
     state.hull = START_HULL;
     state.rainFront = 0;
     buildMission();
-  }
-
-  function douseCone(target) {
-    const range = BLAST_RANGE * (1 + refitSum('blast'));
-    const half = BLAST_HALF_ANGLE * (1 + refitSum('blast'));
-    const dx = target.x - state.hero.x;
-    const dz = target.z - state.hero.z;
-    if (dx * dx + dz * dz > range * range) return false;
-    // Angle from the hero's facing (hero faces +z toward the fire line).
-    const facing = Math.atan2(state.hero.vz, state.hero.vx);
-    const toTarget = Math.atan2(dz, dx);
-    let diff = toTarget - facing;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    return Math.abs(diff) <= half;
   }
 
   function onDouse(flame) {
@@ -191,6 +177,11 @@ export function createWorld(initialRandom, initialSeed = 86) {
     else if (state.homesBurned <= 2) grade = 'A';
     state.missionGrades[state.mission - 1] = grade;
     refreshFeats();
+    if (state.mission === 7) {
+      refreshFeats();
+      endMission(true);
+      return;
+    }
     // Draft options.
     const bag = REFITS.filter((r) => !state.refits.some((o) => o.n === r.n));
     state.options = [];
@@ -227,6 +218,12 @@ export function createWorld(initialRandom, initialSeed = 86) {
       // mission lost -> grade B, move on with homesBurned += 2.
       state.missionGrades[state.mission - 1] = 'B';
       state.homesBurned += 2;
+      if (state.homesBurned >= 6) {
+        state.outcome = 'LOSS';
+        state.phase = 'over';
+        setTicker('Too many homes burned. The season is lost. LOSS.');
+        state.lastEvent = 'LOSS';
+      }
       setTicker(`${missionData().name} lost — grade B. The fire rolls on.`);
       state.lastEvent = 'LOST';
     }
@@ -297,11 +294,12 @@ export function createWorld(initialRandom, initialSeed = 86) {
       const before = state.tank;
       state.tank = Math.min(100, state.tank + chargeRate * dt);
       const gained = state.tank - before;
-      if (gained > 0 && state.tank >= 100) {
+      state.scoopAcc += gained;
+      while (state.scoopAcc >= 50) {
+        state.scoopAcc -= 50;
         state.scoops += 1;
-        setFeat(3, true);
       }
-      if (gained >= 25) { state.scoops += 1; }
+      if (state.tank >= 100) setFeat(3, true);
     }
 
     // Blast.
@@ -309,15 +307,15 @@ export function createWorld(initialRandom, initialSeed = 86) {
     if (wantBlast && state.tank > 0 && state.phase === 'fly') {
       state.blasting = true;
       state.tank = Math.max(0, state.tank - BLAST_DRAIN * dt);
-      // Douse flames in the cone ahead.
+      // Douse flames in range (radial blast, not a facing cone).
       for (const flame of state.flames.slice()) {
-        if (douseCone(flame)) onDouse(flame);
+        if (Math.hypot(flame.x - state.hero.x, flame.z - state.hero.z) <= BLAST_RANGE) onDouse(flame);
       }
       // Damage cores in range.
       for (const core of state.cores) {
         if (core.broken) continue;
         const d = Math.hypot(core.x - state.hero.x, core.z - state.hero.z);
-        if (d <= BLAST_RANGE * 1.2 && douseCone(core)) {
+        if (d <= BLAST_RANGE) {
           const dmg = CORE_DPS * dt * (1 + refitSum('blast'));
           core.hp = Math.max(0, core.hp - dmg);
           if (core.boss) state.bossHp = core.hp;
@@ -342,22 +340,22 @@ export function createWorld(initialRandom, initialSeed = 86) {
     state.fireSpreadClock -= dt;
     if (state.fireSpreadClock <= 0) {
       state.fireSpreadClock = FIRE_SPREAD_INTERVAL * spreadMult;
-      if (state.flames.length) {
+      if (state.flames.length && state.flames.length < 240) {
         const parent = state.flames[Math.floor(random() * state.flames.length)];
         state.flames.push({
           x: parent.x + (random() - 0.5) * 6, z: parent.z + (random() - 0.5) * 6,
-          heat: 1, id: state.flameSerial++,
+          id: state.flameSerial++,
         });
       }
     }
 
-    // Homes burn if a flame is near for too long.
-    for (const flame of state.flames.slice()) {
-      if (flame.heat > 0) flame.heat -= dt / HOME_BURN_TIME;
-      if (flame.heat <= 0) {
+    // Slow burn clock: only if the flame line is huge do homes start to fall.
+    state.burnClock -= dt;
+    if (state.burnClock <= 0) {
+      state.burnClock = 20;
+      if (state.flames.length > 130) {
         state.homesBurned += 1;
         state.homesSaved = Math.max(0, state.homesSaved - 1);
-        state.flames.splice(state.flames.indexOf(flame), 1);
         state.lastEvent = 'BURN';
       }
     }
@@ -384,6 +382,9 @@ export function createWorld(initialRandom, initialSeed = 86) {
         state.wisps.splice(state.wisps.indexOf(wisp), 1);
       }
     }
+
+    // Every-step loss check: too many homes burned ends the season.
+    if (state.homesBurned >= 6 && !state.outcome) endMission(false);
 
     // Rain-front timer: mission ends.
     if (state.rainFront <= 0) {
@@ -512,6 +513,8 @@ export function createWorld(initialRandom, initialSeed = 86) {
     state.wispSerial = 1;
     state.invuln = 0;
     state.phaseTime = 0;
+    state.burnClock = 0;
+    state.scoopAcc = 0;
     state.phase = 'fly';
     startRun();
   }
