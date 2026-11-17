@@ -19,11 +19,11 @@ export function createScene(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.0;
   renderer.setClearColor(0x000000, 0);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xE8D9B0, 30, 70);
+  scene.fog = new THREE.Fog(0xC8DCE8, 35, 95);
 
   // PMREM RoomEnvironment for metal reflections.
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -32,7 +32,7 @@ export function createScene(canvas) {
   const camera = new THREE.PerspectiveCamera(38, VIEW_W / VIEW_H, 0.1, 100);
 
   // --- Lights: ONE warm shadow directional + cool rim + fire-line warm point ---
-  const sun = new THREE.DirectionalLight(0xffd9a0, 2.6);
+  const sun = new THREE.DirectionalLight(0xFFE7C2, 2.6);
   sun.position.set(5, 9, 4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -42,7 +42,7 @@ export function createScene(canvas) {
   sun.shadow.camera.bottom = -14;
   scene.add(sun);
 
-  const rim = new THREE.DirectionalLight(0x7fb4ff, 1.1);
+  const rim = new THREE.DirectionalLight(0x7fb4ff, 0.4);
   rim.position.set(-6, 4, -6);
   scene.add(rim);
 
@@ -50,7 +50,7 @@ export function createScene(canvas) {
   warm.position.set(0, 1.2, 3.2);
   scene.add(warm);
 
-  scene.add(new THREE.AmbientLight(0x404060, 0.5));
+  scene.add(new THREE.HemisphereLight(0xBFE3F2, 0x6B7F5E, 0.8));
 
   // --- Build once: hero sentinel + environment + fire system ---
   const hero = buildHero(PALETTE);
