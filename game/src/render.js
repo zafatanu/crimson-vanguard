@@ -117,6 +117,7 @@ export function createRenderer(canvas) {
       '<div class="label">MISSION ' + state.mission + ' / 7 &nbsp;&middot;&nbsp; ' + esc(mName) + '</div>' +
       '<div class="big" style="font-size:22px;margin-top:4px;">Break ' + coresLeft + ' cores</div>' +
       '<div class="muted" style="margin-top:2px;">RAIN FRONT ' + mmss(state.rainFront) + '</div>' +
+      '<div class="bar" style="width:220px;margin-top:6px;"><span style="width:' + pct(state.rainFront / (row.seconds || 60) * 100) + '%;background:' + (state.rainFront / (row.seconds || 60) > 0.5 ? 'var(--gold)' : 'var(--fire)') + ';"></span></div>' +
       (win
         ? '<div class="green" style="margin-top:4px;">WIN &mdash; district holds.</div>'
         : lose
@@ -140,15 +141,15 @@ export function createRenderer(canvas) {
       '<div class="panel" style="padding:10px 16px;">' +
       '<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">' +
       '<div style="min-width:150px;">' +
-      '<div class="label">TANK</div>' +
-      '<div class="bar gold" style="width:150px;"><span style="width:' + tankPct + '%;"></span></div>' +
+      '<div class="label" style="display:flex;justify-content:space-between;"><span>TANK</span><span class="cv-num">' + Math.round(state.tank) + '/100</span></div>' +
+      '<div class="bar bar--big gold" style="width:150px;"><span style="width:' + tankPct + '%;"></span></div>' +
       '</div>' +
       '<div class="chip">BLAST</div>' +
       '<div class="chip">BOOST</div>' +
       '<div class="chip">RETARDANT</div>' +
       '<div style="min-width:140px;">' +
-      '<div class="label">HULL</div>' +
-      '<div class="bar red" style="width:140px;"><span style="width:' + hullPct + '%;"></span></div>' +
+      '<div class="label" style="display:flex;justify-content:space-between;"><span>HULL</span><span class="cv-num">' + Math.round(state.hull) + '/100</span></div>' +
+      '<div class="bar bar--big red" style="width:140px;"><span style="width:' + hullPct + '%;"></span></div>' +
       '</div>' +
       '</div></div></div>';
     return top + panel + bottom;
