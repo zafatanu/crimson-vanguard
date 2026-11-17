@@ -131,11 +131,15 @@ function clickPlay(x, y) {
 }
 
 function clickDraft(x, y) {
-  if (y >= 190 && y <= 392) {
-    const idx = x < ENV.width / 3 ? 0 : x < (2 * ENV.width) / 3 ? 1 : 2;
-    world.chooseRefit(idx);
-  } else if (y >= 440 && y <= 540) {
-    world.chooseFork(x < ENV.width / 2 ? 'STEADY' : 'SCORE');
+  if (y >= 278 && y <= 566) {
+    if (x < 324) world.chooseRefit(0);
+    else if (x < 640) world.chooseRefit(1);
+    else if (x <= 956) world.chooseRefit(2);
+  } else if (x >= 964 && x <= 1264) {
+    if (y >= 274 && y <= 396) world.chooseFork('STEADY');
+    else if (y >= 408 && y <= 530) world.chooseFork('SCORE');
+  } else if (x >= 16 && x <= 316 && y >= 578 && y <= 626) {
+    world.continueFlight();
   } else if (y > 700) {
     world.continueFlight();
   }
@@ -155,10 +159,9 @@ function handleFrameActions(input) {
     if (bits & ACTION_CONFIRM) startRun();
   } else if (screen === SCREEN_OVER) {
     if (bits & ACTION_CLICK) {
-      const x = click.x;
-      if (x < 518) startRun();
-      else if (x < 786) startRun(runSeed);
-      else screen = SCREEN_TITLE;
+      const { x, y } = click;
+      if (x >= 924 && x <= 1264 && y >= 680 && y <= 744) startRun();
+      else if (x >= 924 && x <= 1264 && y >= 754 && y <= 794) screen = SCREEN_TITLE;
     }
     if (bits & ACTION_CONFIRM) startRun(runSeed);
   } else if (screen === SCREEN_DRAFT) {
