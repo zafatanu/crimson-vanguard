@@ -186,11 +186,13 @@ export function createRenderer(canvas) {
     }
     return '<div class="hud-zone" style="position:absolute;left:40px;right:40px;top:120px;">' +
       '<div style="text-align:center;">' +
+      '<div class="panel" style="display:inline-block;padding:16px 30px 14px;">' +
       '<div class="big" style="font-family:' + VIEW.font + ';font-size:64px;letter-spacing:0.04em;color:' + PALETTE.cream + ';">' +
       'CRIMSON VANGUARD</div>' +
       '<div class="rule" style="width:220px;margin:12px auto;"></div>' +
       '<div class="big" style="font-size:17px;color:' + PALETTE.cream + ';margin-top:8px;">' +
       'Fly the sentinel. Drown the fire line. Hold the city.</div>' +
+      '</div>' +
       '<div style="margin-top:10px;">' +
       '<span class="chip goal">GOAL</span> <span class="chip win">WIN</span> <span class="chip lose">LOSE</span>' +
       '</div>' +
@@ -374,7 +376,9 @@ export function createRenderer(canvas) {
   // ----------------------------------------------------------------------
   function drawOver(state, best, ticker) {
     const win = state.outcome === 'WIN';
-    const grade = state.grade || (win ? 'S' : 'B');
+    const featsEarned = (Array.isArray(state.feats) ?
+      state.feats.filter(function (v) { return !!v; }).length : 0);
+    const grade = (state.missionGrades && state.missionGrades[6]) || (win ? 'S' : 'B');
     const newBest = typeof best === 'number' && state.score > best;
     const headline = win ? 'THE CITY HOLDS' : 'THE FIRE TAKES THE CITY';
     const sub = win
@@ -394,8 +398,8 @@ export function createRenderer(canvas) {
       '<div class="label" style="margin-top:2px;">SEASON SCORE</div>' +
       (newBest ? '<div class="chip" style="background:' + PALETTE.goldBright + ';color:#101010;margin-top:8px;">NEW BEST</div>' : '') +
       '<div style="display:flex;gap:22px;justify-content:center;margin-top:12px;">' +
-      '<div><div class="label">MISSIONS</div><div class="big">' + (state.mission - 1) + ' / 7</div></div>' +
-      '<div><div class="label">FEATS</div><div class="big">' + (state.feats ? state.feats.length : 0) + ' / 10</div></div>' +
+      '<div><div class="label">MISSIONS</div><div class="big">' + (win ? 7 : state.mission - 1) + ' / 7</div></div>' +
+      '<div><div class="label">FEATS</div><div class="big">' + featsEarned + ' / 10</div></div>' +
       '<div><div class="label">CHAIN</div><div class="big">x' + state.chain + '</div></div>' +
       '</div></div>';
     // THIN 2x5 stat strip from state.stats (a PLAIN NUMBER ARRAY on WIN).
@@ -422,12 +426,15 @@ export function createRenderer(canvas) {
     if (featsDone.length) {
       let list = '';
       for (let i = 0; i < featsDone.length; i += 1) {
+        const f = FEATS[i] || {};
         list += '<div style="margin-top:3px;font-size:12px;">' +
-          '<span class="gold">&#10003;</span> ' + esc(featsDone[i]) +
-          '<span class="chip" style="background:#17302A;color:#9FB5AC;margin-left:8px;font-size:10px;">NEW</span></div>';
+          '<span class="gold">' + (featsDone[i] ? '&#10003;' : '&#9675;') +
+          '</span> ' + esc(f.n || ('Feat ' + (i + 1))) +
+          '<span class="chip" style="background:#17302A;color:#9FB5AC;margin-left:8px;font-size:10px;">' +
+          (featsDone[i] ? 'EARNED' : 'LOCKED') + '</span></div>';
       }
       feats = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
-        '<div class="label">FEATS &mdash; ' + featsDone.length + ' / 10</div>' + list + '</div>';
+        '<div class="label">FEATS &mdash; ' + featsEarned + ' / 10</div>' + list + '</div>';
     }
     const nextGoal = state.nextGoal || 'Douse 100 flames in one mission.';
     const goalBox = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
