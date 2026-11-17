@@ -4,8 +4,11 @@ import * as THREE from 'three';
 
 const FLAME_COUNT = 40;   // cone + inner ember cone per flame
 const WISP_COUNT = 24;    // small emissive ember spheres
-const SMOKE_COUNT = 12;    // soft radial-gradient sprite puffs
+const SMOKE_COUNT = 20;    // soft radial-gradient sprite puffs
 const STREAM_SPHERE_COUNT = 12;
+
+const fract = (v) => v - Math.floor(v);
+const hash = (n) => fract(Math.sin(n) * 43758.5453);
 
 export function buildFire(scene, PALETTE) {
   const group = new THREE.Group();
@@ -29,6 +32,10 @@ export function buildFire(scene, PALETTE) {
   const baseMat = new THREE.MeshStandardMaterial({
     color: PALETTE.charcoal, roughness: 1,
   });
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: PALETTE.fire, transparent: true, opacity: 0.3,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
   const flames = [];
   for (let i = 0; i < FLAME_COUNT; i += 1) {
     const outer = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.65, 10), outerMat);
@@ -38,19 +45,33 @@ export function buildFire(scene, PALETTE) {
     const base = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20), baseMat);
     outer.add(mid);
     outer.add(base);
+    if (i % 3 === 0) {
+      const tongue = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.6, 8), midMat);
+      tongue.position.set(0.35, 0.9, 0.15);
+      tongue.rotation.z = -0.35;
+      outer.add(tongue);
+    }
     mid.add(inner);
     mid.add(core);
     inner.position.y = 0.62;
     core.position.y = 1.00;
     mid.position.y = 0.52;
     base.rotation.x = -Math.PI / 2;
-    base.position.y = 0.02;
+    base.position.y = -0.78;
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20), glowMat);
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = -0.77;
+    outer.add(glow);
     group.add(outer);
     flames.push(outer);
   }
   const flameLight = new THREE.PointLight(PALETTE.fire, 6, 10, 1.8);
   flameLight.position.set(0, 2.4, 0);
   group.add(flameLight);
+  const flameLight2 = new THREE.PointLight(PALETTE.fire, 5, 12, 1.8);
+  group.add(flameLight2);
+  const flameLight3 = new THREE.PointLight(PALETTE.fire, 5, 12, 1.8);
+  group.add(flameLight3);
 
   // --- Smoke puffs (canvas radial-gradient texture, soft grey) ---------------
   const smokeCanvas = document.createElement('canvas');
@@ -172,15 +193,21 @@ export function buildFire(scene, PALETTE) {
         flames[i].visible = true;
         const heat = list[i].heat != null ? list[i].heat : 1;
         flames[i].position.set(list[i].x, 0.8, list[i].z);
-        flames[i].scale.set(heat, heat, heat);
+        const v = hash(i * 12.9898);
+        const v2 = hash(i * 78.233);
+        const s = heat * (0.7 + v * 0.9);
+        flames[i].scale.set(s, s, s);
+        flames[i].rotation.z = 0.12 + (v - 0.5) * 0.25;
+        flames[i].rotation.x = (v2 - 0.5) * 0.15;
       } else {
         flames[i].visible = false;
       }
     }
     // show smoke puffs above the first few visible flames; hide the rest
     for (let i = 0; i < SMOKE_COUNT; i += 1) {
-      if (i < list.length && flames[i].visible) {
-        smoke[i].position.set(flames[i].position.x, 2.5 + (i % 3), flames[i].position.z);
+      const si = i * 2;
+      if (si < list.length && flames[si].visible) {
+        smoke[i].position.set(flames[si].position.x, 2.5 + (i % 3), flames[si].position.z);
         smoke[i].visible = true;
       } else {
         smoke[i].visible = false;
@@ -248,6 +275,18 @@ export function buildFire(scene, PALETTE) {
       flameLight.intensity = 5 + Math.sin(time * 11) * 1.5 + Math.sin(time * 23) * 0.8;
     } else {
       flameLight.intensity = 0;
+    }
+    if (flames[13] && flames[13].visible) {
+      flameLight2.position.set(flames[13].position.x, 2.4, flames[13].position.z);
+      flameLight2.intensity = 4 + Math.sin(time * 11 + 2) * 1.2;
+    } else {
+      flameLight2.intensity = 0;
+    }
+    if (flames[26] && flames[26].visible) {
+      flameLight3.position.set(flames[26].position.x, 2.4, flames[26].position.z);
+      flameLight3.intensity = 4 + Math.sin(time * 11 + 4) * 1.2;
+    } else {
+      flameLight3.intensity = 0;
     }
     // smoke drift upward + wrap
     for (let i = 0; i < SMOKE_COUNT; i += 1) {
