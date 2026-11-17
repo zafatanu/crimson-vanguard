@@ -92,7 +92,7 @@ export function createScene(canvas) {
     // --- Camera per view ---
     if (view === 'play') {
       camera.position.set(state.hero.x + 7, 8, state.hero.z + 13);
-      camera.lookAt(state.hero.x, 1.5, state.hero.z - 4);
+      camera.lookAt(state.hero.x, 2.0, state.hero.z - 6);
     } else if (view === 'title') {
       camera.position.set(0, 8, 27);
       camera.lookAt(0, 7, 0);
