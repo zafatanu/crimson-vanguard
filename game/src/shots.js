@@ -132,7 +132,7 @@ export function stageShot(name, world, seed = 86) {
       run(world, seed, (state) => state.mission === 7);
     }
     const { hero } = world.state;
-    for (let i = 0; i < 1200; i++) {
+    for (let i = 0; i < 30; i++) {
       if (world.state.phase !== 'fly') break;
       world.step(STEP, { mx: hero.x, mz: hero.z, blast: false, boost: false });
     }

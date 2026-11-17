@@ -468,7 +468,7 @@ export function createRenderer(canvas) {
     // CARD: 560px wide, panel --panel-3, gold 2px border, centred.
     let card =
       '<div class="panel" style="width:560px;background:var(--panel-3);' +
-      'border:2px solid var(--gold);padding:12px;text-align:center;">' +
+      'border:2px solid var(--gold);padding:10px;text-align:center;">' +
       badge;
     if (!win) {
       card += '<div style="margin-top:6px;color:var(--red-text);font-size:var(--t6b);' +
@@ -503,7 +503,7 @@ export function createRenderer(canvas) {
       for (let i = 0; i < stats.length && i < 10; i += 1) {
         const s = stats[i];
         const gold = GOLD_IDX[i] ? ' cv-stat__value--gold' : (CYAN_IDX[i] ? ' cv-stat__value--cyan' : '');
-        cells += '<div class="cv-stat" style="padding:8px 6px;"><div class="cv-stat__label">' +
+        cells += '<div class="cv-stat" style="padding:6px 6px;"><div class="cv-stat__label">' +
           esc(STAT_LABELS[i] || ('STAT ' + (i + 1))) + '</div>' +
           '<div class="cv-stat__value' + gold + '" style="font-size:24px;">' +
           esc(typeof s === 'number'
@@ -546,14 +546,14 @@ export function createRenderer(canvas) {
     const bottomRow =
       '<div style="display:flex;gap:12px;align-items:stretch;width:100%;">' +
       '<div style="flex:1;min-width:0;overflow:hidden;">' +
-      drawRoute(state).replace('class="cv-route"', 'class="cv-route" style="height:100px"') + '</div>' +
+      drawRoute(state).replace('class="cv-route"', 'class="cv-route" style="height:90px"') + '</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;justify-content:center;width:340px;">' +
       '<span class="cta-btn" style="min-width:0;width:100%;">FLY ANOTHER SEASON</span>' +
-      '<span class="cv-btn-secondary" style="width:100%;text-align:center;">TITLE &amp; DIFFICULTY</span>' +
+      '<span class="cv-btn-secondary" style="width:100%;text-align:center;height:40px;">TITLE &amp; DIFFICULTY</span>' +
       '</div></div>';
 
     return '<div class="cv-scrim-full"></div>' + ('<div class="hud-zone" style="position:absolute;inset:16px;display:flex;' +
-      'flex-direction:column;align-items:center;gap:8px;">' +
+      'flex-direction:column;align-items:center;gap:6px;">' +
       card + grid + lowerRow + bottomRow + '</div>');
   }
 
