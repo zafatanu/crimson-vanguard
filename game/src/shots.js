@@ -122,9 +122,9 @@ export function runToWin(world, seed) {
 // world.state staged at the scene.
 export function stageShot(name, world, seed = 86) {
   if (name === 'play') {
+    const winRow = runToWin(world, seed);
     run(world, seed, (state) => state.mission === 7 &&
-      state.cores.some((c) => c.isBoss && c.hp <= c.maxHp * 0.6) &&
-      state.chain >= 8);
+      state.cores.some((c) => c.boss && c.hp <= c.maxHp * 0.8));
     if (world.state.mission < 7) {
       run(world, seed, (state) => state.mission === 7);
     }
@@ -133,7 +133,7 @@ export function stageShot(name, world, seed = 86) {
       if (world.state.phase !== 'fly') break;
       world.step(STEP, { mx: hero.x, mz: hero.z, blast: false, boost: false });
     }
-    return { screen: SCREEN_PLAY, best: 0, lastRuns: [], ticker: world.state.ticker };
+    return { screen: SCREEN_PLAY, best: winRow.score, lastRuns: [], ticker: world.state.ticker };
   }
   if (name === 'draft') {
     run(world, seed, (state) => state.phase === 'draft' && state.mission === 2);
