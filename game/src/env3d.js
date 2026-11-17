@@ -188,7 +188,7 @@ export function buildEnvironment(scene, PALETTE) {
     const rot = (hash(i * 39.346) - 0.5) * 0.16;
     const burnt = burntIdx.includes(i);
     const type = i % 4;
-    const fi = i % 6;
+    const fi = [1, 2, 1, 2, 0, 3, 1, 4, 2, 5, 1, 2][i % 12];
     const facade = burnt ? charcoalMat : facadeMat[fi];
     const roof = burnt ? roofMat[1]
       : (fi === 1 || fi === 2) ? [roofMat[1], roofMat[2]][i % 2]

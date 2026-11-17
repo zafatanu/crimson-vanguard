@@ -348,7 +348,7 @@ export function createRenderer(canvas) {
       '</div>' +
       '<div style="text-align:center;">' +
       gradeBadge +
-      '<div class="cv-label" style="margin-top:6px;">DISTRICT GRADE</div>' +
+      '<div class="cv-label" style="margin-top:6px;">MISSION GRADE</div>' +
       '</div>' +
       '</div>';
     // Stat strip: 6 cells in a grid + WIN/LOSE chip at the right.
@@ -468,7 +468,7 @@ export function createRenderer(canvas) {
     // CARD: 560px wide, panel --panel-3, gold 2px border, centred.
     let card =
       '<div class="panel" style="width:560px;background:var(--panel-3);' +
-      'border:2px solid var(--gold);padding:10px;text-align:center;">' +
+      'border:2px solid var(--gold);padding:8px;text-align:center;">' +
       badge;
     if (!win) {
       card += '<div style="margin-top:6px;color:var(--red-text);font-size:var(--t6b);' +
@@ -546,7 +546,7 @@ export function createRenderer(canvas) {
     const bottomRow =
       '<div style="display:flex;gap:12px;align-items:stretch;width:100%;">' +
       '<div style="flex:1;min-width:0;overflow:hidden;">' +
-      drawRoute(state).replace('class="cv-route"', 'class="cv-route" style="height:90px"') + '</div>' +
+      drawRoute(state).replace('class="cv-route"', 'class="cv-route" style="height:84px"') + '</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;justify-content:center;width:340px;">' +
       '<span class="cta-btn" style="min-width:0;width:100%;">FLY ANOTHER SEASON</span>' +
       '<span class="cv-btn-secondary" style="width:100%;text-align:center;height:40px;">TITLE &amp; DIFFICULTY</span>' +
