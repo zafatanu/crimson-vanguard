@@ -1,8 +1,9 @@
-// CRIMSON VANGUARD — a 3D Three.js action game: fly a red iron sentinel over a burning daytime
-// city, charge through coolant-tower rings, and blast the fire line back. The game is this
-// directory's game/ folder, plain static files a desktop browser loads offline (game/index.html
-// and its ES modules, with three.js vendored under game/vendor/three/, no network request), and
-// the program hands it in. It copies game/ and screenshots/ from beside this file to /output and
+// CRIMSON VANGUARD — a 3D Three.js action game: a 7-mission aerial-firefighting season.
+// Fly the red iron sentinel over a burning daytime city, charge through coolant-tower rings,
+// blast the fire line back, and break 3 named infernos. The game is this directory's game/
+// folder, plain static files a desktop browser loads offline (game/index.html and its ES
+// modules, with three.js vendored under game/vendor/three/, no network request), and the
+// program hands it in. It copies game/ and screenshots/ from beside this file to /output and
 // writes /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
 // screenshots/ holds the 4 JPEG capture scenes (1-play cover, 2-title, 3-draft, 4-results,
 // seed 86).

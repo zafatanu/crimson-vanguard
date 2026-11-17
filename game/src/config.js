@@ -1,5 +1,5 @@
 // Fixed logical canvas bounds and the sole game palette, straight from the design §6 hex.
-export const VIEW = { width: 1280, height: 800, font: 'Georgia, serif', ui: 'system-ui, sans-serif' };
+export const VIEW = { width: 1280, height: 800, font: "'Noto Sans Condensed','Arial Narrow',sans-serif", ui: 'Noto Sans, system-ui, sans-serif' };
 export const STEP = 1 / 60;
 export const PALETTE = {
   skyTop: '#BFE3F2',
@@ -12,12 +12,16 @@ export const PALETTE = {
   heroRed: '#B02020',
   heroDark: '#7A1414',
   gold: '#F2B33D',
+  goldBright: '#F7B733', // grade S, BEST numbers, selected cards
   steel: '#9AA8B5',
   coolant: '#4FD8FF',
   fire: '#E85D1F',
   ember: '#B4281E',
   smoke: '#787873',
-  dark: '#1E1B18',
+  // Palette follows DESIGN.md §6: dark-teal panels / CTA orange / gold,
+  // while the play frame stays bright daylight.
+  dark: '#0E1B17', // dark teal panels (KINGFISHER family)
+  cta: '#F07B1D', // CTA orange, black bold text on it
   cream: '#F5EAD6',
   ink: '#1E1B18',
 };
