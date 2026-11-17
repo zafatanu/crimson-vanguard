@@ -267,8 +267,7 @@ export function createRenderer(canvas) {
     let nextLeg = '';
     if (next >= 1 && next <= 6) {
       nextLeg = '<path d="M ' + pt[next - 1].x + ' ' + pt[next - 1].y +
-        ' L ' + pt[next].x + ' ' + pt[next].y + '" stroke="var(--cta)" stroke-width="2"' +
-        ' stroke-dasharray="6 4" fill="none"></path>';
+        ' L ' + pt[next].x + ' ' + pt[next].y + '" style="stroke:var(--cta);stroke-width:2;stroke-dasharray:6 4;fill:none"></path>';
     }
     let svg = '';
     for (let i = 1; i <= 7; i += 1) {
@@ -286,14 +285,14 @@ export function createRenderer(canvas) {
           fill = 'var(--gold)';
           stroke = 'var(--gold)';
           sw = 1;
-          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--ink)"' +
-            ' style="font-size:14px;font-weight:bold;">' + g + '</text>';
+          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle"' +
+            ' style="font-size:14px;font-weight:bold;fill:var(--ink);">' + g + '</text>';
         } else {
           fill = (g === 'A' ? 'var(--green)' : 'var(--blue)');
           stroke = fill;
           sw = 1;
-          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--panel)"' +
-            ' style="font-size:14px;font-weight:bold;">' + g + '</text>';
+          inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle"' +
+            ' style="font-size:14px;font-weight:bold;fill:var(--panel);">' + g + '</text>';
         }
       } else if (isNext) {
         fill = 'var(--panel)';
@@ -304,25 +303,25 @@ export function createRenderer(canvas) {
         fill = 'var(--panel)';
         stroke = 'var(--border)';
         sw = 2;
-        inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" fill="var(--text-dim)"' +
-          ' style="font-size:12px;">' + i + '</text>';
+        inside = '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle"' +
+          ' style="font-size:12px;fill:var(--text-dim);">' + i + '</text>';
       }
       const shape = isBoss
         ? '<rect x="' + (p.x - 10) + '" y="' + (p.y - 10) + '" width="20" height="20" transform="rotate(45 ' + p.x + ' ' + p.y + ')"' +
-          ' fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"></rect>'
-        : '<circle cx="' + p.x + '" cy="' + p.y + '" r="14" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"></circle>';
+          ' style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:' + sw + '"></rect>'
+        : '<circle cx="' + p.x + '" cy="' + p.y + '" r="14" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:' + sw + '"></circle>';
       const refit = isFork
         ? '<rect x="' + (p.x - 4) + '" y="' + (p.y - 34) + '" width="8" height="8" transform="rotate(45 ' + p.x + ' ' + (p.y - 26) + ')"' +
-          ' fill="var(--gold)"></rect>'
+          ' style="fill:var(--gold)"></rect>'
         : '';
       svg += shape + inside + refit +
-        '<text x="' + p.x + '" y="' + (p.y + 34) + '" text-anchor="middle" fill="var(--text)"' +
-        ' style="font-size:11px;font-weight:700;letter-spacing:0.02em;">' + label + '</text>';
+        '<text x="' + p.x + '" y="' + (p.y + 34) + '" text-anchor="middle"' +
+        ' style="font-size:11px;font-weight:700;letter-spacing:0.02em;fill:var(--text);">' + label + '</text>';
     }
     return '<div class="panel" style="padding:12px 16px;">' +
       '<div class="label" style="text-align:center;">THE SEASON ROUTE</div>' +
       '<svg class="cv-route" viewBox="0 0 1232 140" xmlns="http://www.w3.org/2000/svg">' +
-      '<path d="' + full + '" stroke="var(--text)" stroke-width="2" fill="none"></path>' +
+      '<path d="' + full + '" style="stroke:var(--text);stroke-width:2;fill:none"></path>' +
       nextLeg +
       svg +
       '</svg></div>';
@@ -439,9 +438,9 @@ export function createRenderer(canvas) {
   }
 
   // ----------------------------------------------------------------------
-  // drawOver: RESULTS (OVER). Dawn gradient + one centred dark-teal card:
-  // giant gold grade in a sunburst badge, WIN/LOSS headline, season score,
-  // NEW BEST pill, 3 key stats, then a thin 2x5 stat strip + feats + route.
+  // drawOver: RESULTS (OVER). One flex column card: grade sunburst badge,
+  // WIN/LOSS headline, season score, 3 key stats, then a stat grid, a lower
+  // row (feats + next goal), the route map, and a buttons row.
   // ----------------------------------------------------------------------
   function drawOver(state, best, ticker) {
     const win = state.outcome === 'WIN';
@@ -453,73 +452,110 @@ export function createRenderer(canvas) {
     const sub = win
       ? 'Every core broken. The line holds till the rain.'
       : 'The line breaks. Ash takes the district tonight.';
-    const card =
-      '<div class="hud-zone" style="position:absolute;top:20px;left:0;right:0;text-align:center;">' +
-      '<div style="display:inline-block;' +
-      'background:radial-gradient(circle,' + PALETTE.goldBright + ' 0 38px,' + PALETTE.cta + ' 38px 54px,transparent 54px);' +
-      'border-radius:50%;width:150px;height:150px;' +
-      'display:flex;align-items:center;justify-content:center;">' +
-      '<span style="font-family:' + VIEW.font + ';font-size:70px;font-weight:800;color:#101010;">' + esc(grade) + '</span>' +
-      '</div>' +
-      '<div class="big" style="font-size:34px;color:' + PALETTE.cream + ';margin-top:10px;">' + headline + '</div>' +
-      '<div class="muted" style="font-size:13px;margin-top:4px;">' + sub + '</div>' +
-      '<div class="big" style="font-size:40px;color:' + PALETTE.goldBright + ';margin-top:10px;">' + fmt(state.score) + '</div>' +
-      '<div class="label" style="margin-top:2px;">SEASON SCORE</div>' +
-      (newBest ? '<div class="chip" style="background:' + PALETTE.goldBright + ';color:#101010;margin-top:8px;">NEW BEST</div>' : '') +
+
+    // GRADE SUNBURST BADGE (S gets the gold/cta halo; defeat uses --red-text).
+    const badgeRing = win
+      ? ''
+      : ';border-color:var(--red-text);color:var(--red-text)';
+    const badge =
+      '<div style="width:150px;height:150px;margin:0 auto;' +
+      'background:radial-gradient(circle,var(--gold) 0 38px,var(--cta) 38px 54px,transparent 54px);' +
+      'border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
+      '<div class="cv-grade-badge' +
+      (grade === 'A' ? ' cv-grade-badge--a' : grade === 'B' ? ' cv-grade-badge--b' : '') +
+      '" style="' + (win ? '' : 'border-color:var(--red-text);color:var(--red-text);') + '">' +
+      esc(grade) + '</div></div>';
+
+    // CARD: 560px wide, panel --panel-3, gold 2px border, centred.
+    let card =
+      '<div class="panel" style="width:560px;background:var(--panel-3);' +
+      'border:2px solid var(--gold);padding:16px;text-align:center;">' +
+      badge;
+    if (!win) {
+      card += '<div style="margin-top:6px;color:var(--red-text);font-size:var(--t6b);' +
+        'font-family:var(--font-display);font-weight:800;text-transform:uppercase;' +
+        'letter-spacing:0.14em;">DEFEAT</div>';
+    }
+    card +=
+      '<div class="cv-display cv-t4" style="margin-top:10px;color:var(--text);">' + esc(headline) + '</div>' +
+      '<div class="cv-body" style="margin-top:4px;color:var(--text-dim);">' + esc(sub) + '</div>' +
+      '<div class="cv-label" style="margin-top:10px;">SEASON SCORE</div>' +
+      '<div class="cv-display cv-t2" style="color:var(--gold);">' + fmt(state.score) + '</div>' +
+      (newBest
+        ? '<span class="cv-chip" style="background:var(--gold);color:var(--ink);margin-top:8px;">NEW BEST</span>'
+        : '') +
+      '<div class="cv-label" style="margin-top:6px;">' +
+      esc(state.difficulty || 'HOTSHOT') + ' &middot; SCORE &times;' + (state.difficultyScale || 1) + '</div>' +
       '<div style="display:flex;gap:22px;justify-content:center;margin-top:12px;">' +
-      '<div><div class="label">MISSIONS</div><div class="big">' + (win ? 7 : state.mission - 1) + ' / 7</div></div>' +
-      '<div><div class="label">FEATS</div><div class="big">' + featsEarned + ' / 10</div></div>' +
-      '<div><div class="label">CHAIN</div><div class="big">x' + state.chain + '</div></div>' +
+      '<div><div class="cv-stat__label">MISSIONS</div><div class="cv-stat__value">' + (win ? 7 : state.mission - 1) + ' / 7</div></div>' +
+      '<div><div class="cv-stat__label">FEATS</div><div class="cv-stat__value">' + featsEarned + ' / 10</div></div>' +
+      '<div><div class="cv-stat__label">CHAIN</div><div class="cv-stat__value">x' + state.chain + '</div></div>' +
       '</div></div>';
-    // THIN 2x5 stat strip from state.stats (a PLAIN NUMBER ARRAY on WIN).
+
+    // STAT GRID: 10 cells from state.stats (PLAIN NUMBER ARRAY on WIN).
     const STAT_LABELS = ['FLAMES DOUSED', 'HOMES SAVED', 'HOMES TOTAL',
       'BEST CHAIN', 'BEST COMBO', 'DROPS ON TARGET %', 'SCOOPS',
-      'CREW DROPS', 'CORES BROKEN', 'TIME S'];
-    let strip = '';
+      'CREW DROPS', 'CORES BROKEN', 'TIME'];
+    const GOLD_IDX = { 3: 1, 4: 1 }; // BEST CHAIN + BEST COMBO gold
+    const CYAN_IDX = { 6: 1 };      // SCOOPS cyan
+    let grid = '';
     const stats = Array.isArray(state.stats) ? state.stats : [];
     if (stats.length) {
       let cells = '';
       for (let i = 0; i < stats.length && i < 10; i += 1) {
         const s = stats[i];
-        cells += '<div style="text-align:center;min-width:104px;">' +
-          '<div class="label" style="font-size:9px;">' + esc(STAT_LABELS[i] || ('STAT ' + (i + 1))) + '</div>' +
-          '<div class="big" style="font-size:15px;">' + esc(typeof s === 'number' ? (i === 4 ? s.toFixed(2) : fmt(s)) : s) + '</div></div>';
+        const gold = GOLD_IDX[i] ? ' cv-stat__value--gold' : (CYAN_IDX[i] ? ' cv-stat__value--cyan' : '');
+        cells += '<div class="cv-stat"><div class="cv-stat__label">' +
+          esc(STAT_LABELS[i] || ('STAT ' + (i + 1))) + '</div>' +
+          '<div class="cv-stat__value' + gold + '">' +
+          esc(typeof s === 'number'
+            ? (i === 9 ? mmss(s) : (i === 4 ? s.toFixed(2) : fmt(s)))
+            : s) + '</div></div>';
       }
-      strip = '<div class="hud-zone" style="position:absolute;left:16px;right:16px;top:296px;">' +
-        '<div class="panel" style="padding:8px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
-        cells + '</div></div>';
+      grid = '<div class="cv-stat-grid" style="width:100%;">' + cells + '</div>';
     }
-    // FEATS checklist + NEXT GOAL box.
+
+    // FEATS checklist (two columns) + NEXT GOAL box.
     let feats = '';
     const featsDone = Array.isArray(state.feats) ? state.feats : [];
     if (featsDone.length) {
       let list = '';
       for (let i = 0; i < featsDone.length; i += 1) {
         const f = FEATS[i];
-        list += '<div style="margin-top:3px;font-size:12px;">' +
+        list += '<div style="font-size:12px;">' +
           '<span class="gold">' + (featsDone[i] ? '&#10003;' : '&#9675;') +
           '</span> ' + esc(typeof f === 'string' ? f : (f && f.n) || ('Feat ' + (i + 1))) +
-          '<span class="chip" style="background:#17302A;color:#9FB5AC;margin-left:8px;font-size:10px;">' +
+          '<span class="cv-chip cv-chip--earned" style="margin-left:8px;">' +
           (featsDone[i] ? 'EARNED' : 'LOCKED') + '</span></div>';
       }
-      feats = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
-        '<div class="label">FEATS &mdash; ' + featsEarned + ' / 10</div>' + list + '</div>';
+      feats =
+        '<div class="panel" style="flex:1;max-width:560px;padding:10px 14px;text-align:left;">' +
+        '<div class="cv-label">FEATS &mdash; ' + featsEarned + ' / 10</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-top:6px;">' +
+        list + '</div></div>';
     }
     const nextGoal = state.nextGoal || 'Douse 100 flames in one mission.';
-    const goalBox = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
-      '<div class="label">NEXT GOAL</div>' +
-      '<div style="font-size:13px;margin-top:6px;line-height:1.4;">' + esc(nextGoal) + '</div></div>';
-    const lower =
-      '<div class="hud-zone" style="position:absolute;left:16px;right:16px;top:352px;">' +
-      '<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;">' +
-      feats + goalBox + '</div></div>';
+    const goalBox =
+      '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;' +
+      'border-left:4px solid var(--gold);">' +
+      '<div class="cv-label">NEXT GOAL</div>' +
+      '<div class="cv-body" style="font-size:13px;margin-top:6px;">' + esc(nextGoal) + '</div></div>';
+    const lowerRow =
+      '<div style="display:flex;gap:14px;justify-content:center;width:100%;">' +
+      feats + goalBox + '</div>';
+
+    // BUTTONS: ONE primary only.
     const buttons =
-      '<div class="hud-zone" style="position:absolute;right:16px;bottom:8px;">' +
       '<div style="display:flex;gap:14px;align-items:flex-end;">' +
-      '<span class="cta-btn" style="font-size:20px;padding:10px 22px;">TITLE &amp; DIFFICULTY</span>' +
       '<span class="cta-btn">FLY ANOTHER SEASON</span>' +
-      '</div></div>';
-    return card + strip + lower + drawRoute(state) + buttons;
+      '<span class="cv-btn-secondary">TITLE &amp; DIFFICULTY</span>' +
+      '</div>';
+
+    return '<div class="hud-zone" style="position:absolute;inset:16px;display:flex;' +
+      'flex-direction:column;align-items:center;gap:10px;">' +
+      card + grid + lowerRow +
+      '<div style="width:100%;height:120px;">' + drawRoute(state) + '</div>' +
+      buttons + '</div>';
   }
 
   // ----------------------------------------------------------------------
