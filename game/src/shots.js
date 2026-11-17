@@ -150,13 +150,13 @@ export function stageShot(name, world, seed = 86) {
     };
   }
   // 'start' and default: win the season, then reset to the title live demo.
-  const run = runToWin(world, seed);
+  const winRow = runToWin(world, seed);
   world.begin(seed, 'HOTSHOT');
   for (let i = 0; i < 300; i++) world.idle(STEP);
   return {
     screen: SCREEN_TITLE,
-    best: run.score,
-    lastRuns: [run],
+    best: winRow.score,
+    lastRuns: [winRow],
     ticker: 'CRIMSON VANGUARD. Season 7 missions. Choose a difficulty; press ENTER to take off.',
   };
 }

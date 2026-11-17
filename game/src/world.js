@@ -125,6 +125,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
 
   function startRun() {
     // hero start pad near the bottom (player side), tank 50, hull 100.
+    state.hero.x = 0;
     state.hero.z = 34;
     state.hero.tx = state.hero.x; state.hero.tz = state.hero.z;
     state.hero.vx = 0; state.hero.vz = 0;
