@@ -4,7 +4,7 @@
 // painted by scene3d.createScene(...).update(state, time, view); this
 // module owns only the DOM overlay.
 import { PALETTE, VIEW } from './config.js';
-import { MISSIONS, DIFFICULTIES } from './catalog.js';
+import { MISSIONS, DIFFICULTIES, REFITS } from './catalog.js';
 import { createScene } from './scene3d.js';
 
 export const SCREEN_TITLE = 'title';
@@ -221,6 +221,241 @@ export function createRenderer(canvas) {
   }
 
   // ----------------------------------------------------------------------
+  // gradeChip: the S/A/B grade as a round gold/small chip (shared by draft
+  // and the route map).
+  // ----------------------------------------------------------------------
+  function gradeChip(g) {
+    const cls = g === 'S' ? 's' : g === 'A' ? 'a' : 'b';
+    return '<span class="chip ' + cls + '" style="border-radius:999px;">' + esc(g) + '</span>';
+  }
+
+  // ----------------------------------------------------------------------
+  // drawRoute: the curved SEASON ROUTE map. Shared by the draft screen and
+  // the results card — 7 nodes, grade medallions, dashed orange next leg,
+  // twin refit markers at the fork missions.
+  // ----------------------------------------------------------------------
+  function drawRoute(state) {
+    const grades = state.grades || {};
+    const current = state.mission || 1;
+    const next = state.nextMission || current;
+    let nodes = '';
+    for (let i = 1; i <= 7; i += 1) {
+      const m = MISSIONS[i - 1];
+      const g = grades[i];
+      const isNext = i === next;
+      const isBoss = !!m.boss;
+      const isFork = i === 2 || i === 4 || i === 5;
+      const taken = !!g;
+      const medal = taken
+        ? gradeChip(g)
+        : isNext
+        ? '<span class="chip" style="background:' + PALETTE.cta + ';color:#101010;">NEXT</span>'
+        : '<span class="chip" style="background:#17302A;color:#9FB5AC;">' + i + '</span>';
+      nodes +=
+        '<div style="text-align:center;position:relative;flex:0 0 auto;width:120px;">' +
+        '<div class="big" style="font-size:12px;letter-spacing:0.1em;">' +
+        (isBoss ? '<span class="gold">&#9733;</span> ' : '') +
+        'M' + i + '</div>' +
+        '<div style="margin-top:4px;font-size:11px;line-height:1.2;color:#9FB5AC;height:26px;overflow:hidden;">' +
+        esc(m ? m.name : '') + '</div>' +
+        '<div style="margin-top:4px;">' + medal + '</div>' +
+        (isFork ? '<div class="label" style="margin-top:3px;font-size:9px;">REFIT</div>' : '') +
+        '</div>';
+    }
+    return '<div class="hud-zone" style="position:absolute;left:24px;right:24px;bottom:88px;">' +
+      '<div class="panel" style="padding:12px 16px;">' +
+      '<div class="label" style="text-align:center;">THE SEASON ROUTE</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;">' +
+      nodes +
+      '</div>' +
+      '<div style="height:2px;margin:8px 18px 0;background:' +
+      'repeating-linear-gradient(90deg,' + PALETTE.cta + ' 0 8px,transparent 8px 16px);"></div>' +
+      '</div></div>';
+  }
+
+  // ----------------------------------------------------------------------
+  // drawDraft: "MISSION n/7 HELD TILL THE RAIN". Result strip, 1-of-3
+  // refit cards, optional route fork, the curved route map, TAKE OFF CTA.
+  // ----------------------------------------------------------------------
+  function drawDraft(state, best, ticker) {
+    const m = MISSIONS[state.mission - 1];
+    const mName = m ? m.name : 'Mission ' + state.mission;
+    const win = state.outcome === 'WIN';
+    const grade = state.grade || (win ? 'S' : 'B');
+    const header =
+      '<div class="hud-zone" style="position:absolute;top:16px;left:16px;right:16px;text-align:center;">' +
+      '<div class="panel" style="display:inline-block;padding:10px 22px;">' +
+      '<div class="label">MISSION ' + state.mission + ' / 7 HELD TILL THE RAIN</div>' +
+      '<div class="big" style="font-size:20px;margin-top:2px;">' + esc(mName) + '</div>' +
+      '</div></div>';
+    const stats = [
+      ['SCORE', fmt(state.score)],
+      ['FLAMES', state.flames],
+      ['HOMES', state.homes],
+      ['CHAINS', 'x' + state.chain],
+      ['RAIN', mmss(state.rainFront)],
+      ['HULL', state.hull],
+    ];
+    let strip = '';
+    for (let i = 0; i < stats.length; i += 1) {
+      strip += '<div style="text-align:center;min-width:96px;">' +
+        '<div class="label">' + stats[i][0] + '</div>' +
+        '<div class="big" style="font-size:18px;">' + stats[i][1] + '</div></div>';
+    }
+    const gradeBadge = win
+      ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;' +
+        'border-radius:50%;background:' + PALETTE.goldBright + ';color:#101010;font-size:26px;font-weight:800;">' +
+        esc(grade) + '</span>'
+      : gradeChip(grade);
+    const result =
+      '<div class="hud-zone" style="position:absolute;top:74px;left:16px;right:16px;">' +
+      '<div class="panel" style="padding:12px 18px;display:flex;align-items:center;gap:20px;justify-content:center;">' +
+      gradeBadge +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + strip + '</div>' +
+      '<div class="chip ' + (win ? 'win' : 'lose') + '">' + (win ? 'WIN' : 'LOSE') + '</div>' +
+      '</div></div>';
+
+    // REFIT THE SENTINEL — PICK 1 OF 3, from state.options (catalog REFITS).
+    let refit = '';
+    const options = Array.isArray(state.options) ? state.options : [];
+    if (options.length) {
+      let cards = '';
+      for (let i = 0; i < options.length; i += 1) {
+        const r = options[i];
+        const rec = REFITS.find(function (x) { return x && x.n === r.n; }) || r;
+        cards +=
+          '<div class="panel" style="padding:12px 14px;width:200px;text-align:left;background:' + PALETTE.cream + ';color:#1E1B18;">' +
+          '<div class="big" style="font-size:18px;color:' + PALETTE.goldBright + ';">' + esc(rec.n) + '</div>' +
+          '<div style="font-size:12px;color:#55604C;margin-top:6px;line-height:1.4;">' + esc(rec.s) + '</div>' +
+          '<div class="label" style="margin-top:8px;font-size:9px;color:' + PALETTE.cta + ';">' +
+          (r.fitted ? 'FITTED' : 'NEW') + '</div>' +
+          '</div>';
+      }
+      refit =
+        '<div class="hud-zone" style="position:absolute;top:150px;left:16px;right:16px;">' +
+        '<div class="panel" style="padding:12px 18px;text-align:center;">' +
+        '<div class="label">REFIT THE SENTINEL &mdash; PICK 1 OF 3</div>' +
+        '<div style="display:flex;justify-content:center;gap:14px;margin-top:10px;flex-wrap:wrap;">' +
+        cards + '</div></div></div>';
+    }
+
+    // THE ROUTE FORKS — CHOOSE THE NEXT MISSION (A/B). Only after 2/4/5.
+    let fork = '';
+    const forkRow = ROUTE_FORKS.find(function (f) { return f.after === state.mission; });
+    if (forkRow) {
+      const a = forkRow.a; const b = forkRow.b;
+      const opt = function (k, label, risk) {
+        const on = state.forkChoice === k;
+        return '<div class="panel" style="padding:10px 14px;width:300px;text-align:left;' +
+          (on ? 'border:2px solid ' + PALETTE.cta + ';' : '') + '">' +
+          '<div class="big" style="font-size:16px;color:' + PALETTE.cream + ';">' + esc(label) + '</div>' +
+          '<div style="font-size:12px;color:#9FB5AC;margin-top:4px;line-height:1.4;">' + esc(risk) + '</div>' +
+          '</div>';
+      };
+      fork =
+        '<div class="hud-zone" style="position:absolute;top:272px;left:16px;right:16px;">' +
+        '<div class="panel" style="padding:12px 18px;text-align:center;">' +
+        '<div class="label">THE ROUTE FORKS &mdash; CHOOSE THE NEXT MISSION</div>' +
+        '<div style="display:flex;justify-content:center;gap:14px;margin-top:10px;flex-wrap:wrap;">' +
+        opt(a.key, a.label, a.risk) + opt(b.key, b.label, b.risk) + '</div></div></div>';
+    }
+
+    const cta =
+      '<div class="hud-zone" style="position:absolute;right:16px;bottom:8px;text-align:right;">' +
+      '<span class="cta-btn">TAKE OFF</span></div>';
+
+    return header + result + refit + fork + drawRoute(state) + cta;
+  }
+
+  // ----------------------------------------------------------------------
+  // drawOver: RESULTS (OVER). Dawn gradient + one centred dark-teal card:
+  // giant gold grade in a sunburst badge, WIN/LOSS headline, season score,
+  // NEW BEST pill, 3 key stats, then a thin 2x5 stat strip + feats + route.
+  // ----------------------------------------------------------------------
+  function drawOver(state, best, ticker) {
+    const win = state.outcome === 'WIN';
+    const grade = state.grade || (win ? 'S' : 'B');
+    const newBest = typeof best === 'number' && state.score > best;
+    const headline = win ? 'THE CITY HOLDS' : 'THE FIRE TAKES THE CITY';
+    const sub = win
+      ? 'Every core broken. The line holds till the rain.'
+      : 'The line breaks. Ash takes the district tonight.';
+    const card =
+      '<div class="hud-zone" style="position:absolute;top:20px;left:0;right:0;text-align:center;">' +
+      '<div style="display:inline-block;' +
+      'background:radial-gradient(circle,' + PALETTE.goldBright + ' 0 38px,' + PALETTE.cta + ' 38px 54px,transparent 54px);' +
+      'border-radius:50%;width:150px;height:150px;' +
+      'display:flex;align-items:center;justify-content:center;">' +
+      '<span style="font-family:' + VIEW.font + ';font-size:70px;font-weight:800;color:#101010;">' + esc(grade) + '</span>' +
+      '</div>' +
+      '<div class="big" style="font-size:34px;color:' + PALETTE.cream + ';margin-top:10px;">' + headline + '</div>' +
+      '<div class="muted" style="font-size:13px;margin-top:4px;">' + sub + '</div>' +
+      '<div class="big" style="font-size:40px;color:' + PALETTE.goldBright + ';margin-top:10px;">' + fmt(state.score) + '</div>' +
+      '<div class="label" style="margin-top:2px;">SEASON SCORE</div>' +
+      (newBest ? '<div class="chip" style="background:' + PALETTE.goldBright + ';color:#101010;margin-top:8px;">NEW BEST</div>' : '') +
+      '<div style="display:flex;gap:22px;justify-content:center;margin-top:12px;">' +
+      '<div><div class="label">MISSIONS</div><div class="big">' + (state.mission - 1) + ' / 7</div></div>' +
+      '<div><div class="label">FEATS</div><div class="big">' + (state.feats ? state.feats.length : 0) + ' / 10</div></div>' +
+      '<div><div class="label">CHAIN</div><div class="big">x' + state.chain + '</div></div>' +
+      '</div></div>';
+    // THIN 2x5 stat strip from state.stats.
+    let strip = '';
+    const stats = Array.isArray(state.stats) ? state.stats : [];
+    if (stats.length) {
+      let cells = '';
+      for (let i = 0; i < stats.length && i < 10; i += 1) {
+        const s = stats[i];
+        cells += '<div style="text-align:center;min-width:104px;">' +
+          '<div class="label" style="font-size:9px;">' + esc(s.label) + '</div>' +
+          '<div class="big" style="font-size:15px;">' + esc(s.value) + '</div></div>';
+      }
+      strip = '<div class="hud-zone" style="position:absolute;left:16px;right:16px;top:296px;">' +
+        '<div class="panel" style="padding:8px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
+        cells + '</div></div>';
+    }
+    // FEATS checklist + NEXT GOAL box.
+    let feats = '';
+    const featsDone = Array.isArray(state.feats) ? state.feats : [];
+    if (featsDone.length) {
+      let list = '';
+      for (let i = 0; i < featsDone.length; i += 1) {
+        list += '<div style="margin-top:3px;font-size:12px;">' +
+          '<span class="gold">&#10003;</span> ' + esc(featsDone[i]) +
+          '<span class="chip" style="background:#17302A;color:#9FB5AC;margin-left:8px;font-size:10px;">NEW</span></div>';
+      }
+      feats = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
+        '<div class="label">FEATS &mdash; ' + featsDone.length + ' / 10</div>' + list + '</div>';
+    }
+    const nextGoal = state.nextGoal || 'Douse 100 flames in one mission.';
+    const goalBox = '<div class="panel" style="padding:10px 14px;width:230px;text-align:left;">' +
+      '<div class="label">NEXT GOAL</div>' +
+      '<div style="font-size:13px;margin-top:6px;line-height:1.4;">' + esc(nextGoal) + '</div></div>';
+    const lower =
+      '<div class="hud-zone" style="position:absolute;left:16px;right:16px;top:352px;">' +
+      '<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;">' +
+      feats + goalBox + '</div></div>';
+    const buttons =
+      '<div class="hud-zone" style="position:absolute;right:16px;bottom:8px;">' +
+      '<div style="display:flex;gap:14px;align-items:flex-end;">' +
+      '<span class="cta-btn" style="font-size:20px;padding:10px 22px;">TITLE &amp; DIFFICULTY</span>' +
+      '<span class="cta-btn">FLY ANOTHER SEASON</span>' +
+      '</div></div>';
+    return card + strip + lower + drawRoute(state) + buttons;
+  }
+
+  // ----------------------------------------------------------------------
+  // drawPaused: simple centred dark panel — "PAUSED — P to resume".
+  // ----------------------------------------------------------------------
+  function drawPaused(state, best, ticker) {
+    return '<div class="hud-zone" style="position:absolute;top:0;right:0;bottom:0;left:0;' +
+      'display:flex;align-items:center;justify-content:center;">' +
+      '<div class="panel" style="padding:22px 44px;text-align:center;">' +
+      '<div class="big" style="font-size:30px;color:' + PALETTE.cream + ';">PAUSED</div>' +
+      '<div class="muted" style="font-size:13px;margin-top:4px;">P &mdash; resume</div>' +
+      '</div></div>';
+  }
+
+  // ----------------------------------------------------------------------
   // draw: map a screen to a view, update the WebGL scene, rebuild the HUD
   // DOM only when the cheap signature changes.
   // ----------------------------------------------------------------------
@@ -239,17 +474,16 @@ export function createRenderer(canvas) {
     if (signature === lastSig) return;
     lastSig = signature;
 
-    if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) {
+    if (screen === SCREEN_PLAY) {
       hud.innerHTML = drawPlay(state, best, ticker || state.ticker);
+    } else if (screen === SCREEN_PAUSED) {
+      hud.innerHTML = drawPaused(state, best, ticker || state.ticker);
     } else if (screen === SCREEN_TITLE) {
       hud.innerHTML = drawTitle(state, best, lastRuns);
+    } else if (screen === SCREEN_DRAFT) {
+      hud.innerHTML = drawDraft(state, best, ticker || state.ticker);
     } else {
-      // DRAFT / OVER — temporary dark STANDBY panel (replaced by M5b).
-      hud.innerHTML = '<div class="hud-zone" style="position:absolute;top:16px;right:16px;left:16px;text-align:center;">' +
-        '<div class="panel" style="display:inline-block;padding:18px 34px;">' +
-        '<div class="label">' + (screen === SCREEN_OVER ? 'RUN COMPLETE' : 'STANDBY') + '</div>' +
-        '<div class="big" style="font-size:30px;color:' + PALETTE.cream + ';">' +
-        (screen === SCREEN_OVER ? esc(outcome) : '') + '</div></div></div>';
+      hud.innerHTML = drawOver(state, best, ticker || state.ticker);
     }
   }
 
