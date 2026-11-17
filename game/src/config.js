@@ -18,6 +18,19 @@ export const PALETTE = {
   fire: '#E85D1F',
   ember: '#B4281E',
   smoke: '#787873',
+  // --- City facade palette (STYLIZED-3D-REFERENCES.md §6) ---
+  facadeCream: '#EDE2C9',
+  facadeBrick: '#C47A52',
+  facadeOchre: '#D9A441',
+  facadeSage: '#8FA968',
+  facadeSlate: '#7E94A6',
+  facadeWarmWhite: '#F2EDE3',
+  roofTerra: '#B4552D',
+  roofDark: '#4A4440',
+  roofGreen: '#4E6B4A',
+  charcoal: '#2A2320',
+  windowDark: '#20262B',
+  windowWarm: '#FFC46B',
   // Palette follows DESIGN.md §6: dark-teal panels / CTA orange / gold,
   // while the play frame stays bright daylight.
   dark: '#0E1B17', // dark teal panels (KINGFISHER family)
