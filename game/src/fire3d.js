@@ -14,14 +14,14 @@ export function buildFire(scene, PALETTE) {
   // Four nested cones per flame: OUTER ember cone is the parent group; MID fire,
   // INNER gold, and CORE skyWarm cones are children. Base is a charcoal scorch.
   const outerMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 1.8,
+    color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 1.4,
     transparent: true, opacity: 1.0,
   });
   const midMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 2.5,
+    color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 1.4,
   });
   const innerMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 1.6,
+    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 1.2,
   });
   const coreMat = new THREE.MeshStandardMaterial({
     color: PALETTE.skyWarm, emissive: PALETTE.skyWarm, emissiveIntensity: 3.5,
@@ -78,7 +78,7 @@ export function buildFire(scene, PALETTE) {
 
   // --- Ember wisp pool -------------------------------------------------------
   const wispMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.fire, emissive: PALETTE.ember, emissiveIntensity: 1.8,
+    color: PALETTE.fire, emissive: PALETTE.ember, emissiveIntensity: 1.4,
   });
   const wisps = [];
   for (let i = 0; i < WISP_COUNT; i += 1) {
