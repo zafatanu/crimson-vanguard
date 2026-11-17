@@ -4,25 +4,47 @@ import * as THREE from 'three';
 
 const FLAME_COUNT = 40;   // cone + inner ember cone per flame
 const WISP_COUNT = 24;    // small emissive ember spheres
-const SMOKE_COUNT = 6;    // soft radial-gradient sprite puffs
+const SMOKE_COUNT = 12;    // soft radial-gradient sprite puffs
 const STREAM_SPHERE_COUNT = 12;
 
 export function buildFire(scene, PALETTE) {
   const group = new THREE.Group();
 
   // --- Flame pool ------------------------------------------------------------
+  // Four nested cones per flame: OUTER ember cone is the parent group; MID fire,
+  // INNER gold, and CORE skyWarm cones are children. Base is a charcoal scorch.
   const outerMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 1.8,
+    transparent: true, opacity: 0.85,
+  });
+  const midMat = new THREE.MeshStandardMaterial({
     color: PALETTE.fire, emissive: PALETTE.fire, emissiveIntensity: 2.5,
   });
   const innerMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.ember, emissive: PALETTE.ember, emissiveIntensity: 2.2,
+    color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 2.8,
+  });
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.skyWarm, emissive: PALETTE.skyWarm, emissiveIntensity: 3.5,
+  });
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.charcoal, roughness: 1,
   });
   const flames = [];
   for (let i = 0; i < FLAME_COUNT; i += 1) {
-    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.6, 10), outerMat);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.0, 10), innerMat);
-    outer.add(inner);
-    inner.position.y = 0.35;
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.1, 10), outerMat);
+    const mid = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 10), midMat);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 10), innerMat);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 10), coreMat);
+    const base = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20), baseMat);
+    outer.add(mid);
+    outer.add(base);
+    mid.add(inner);
+    mid.add(core);
+    inner.position.y = 0.45;
+    core.position.y = 0.55;
+    mid.position.y = 0.35;
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = 0.02;
     group.add(outer);
     flames.push(outer);
   }
@@ -43,12 +65,12 @@ export function buildFire(scene, PALETTE) {
   sctx.fillRect(0, 0, 64, 64);
   const smokeTex = new THREE.CanvasTexture(smokeCanvas);
   const smokeMat = new THREE.SpriteMaterial({
-    map: smokeTex, transparent: true, opacity: 0.55, depthWrite: false,
+    map: smokeTex, transparent: true, opacity: 0.5, depthWrite: false,
   });
   const smoke = [];
   for (let i = 0; i < SMOKE_COUNT; i += 1) {
     const puff = new THREE.Sprite(smokeMat);
-    puff.scale.set(3, 3, 1);
+    puff.scale.set(4, 4, 1);
     puff.visible = false;
     group.add(puff);
     smoke.push(puff);
@@ -193,11 +215,39 @@ export function buildFire(scene, PALETTE) {
   }
 
   function update(time) {
-    // flame flicker
+    // flame flicker — each layer's scale.x jitters out of phase so the cone
+    // reads as layers, not one solid cone
+    let firstVisible = -1;
     for (let i = 0; i < FLAME_COUNT; i += 1) {
       const f = flames[i];
       if (!f.visible) continue;
+      if (firstVisible < 0) firstVisible = i;
       f.scale.y = f.scale.x * (1 + Math.sin(time * 6 + i) * 0.15);
+      const mid = f.children[0];
+      const inner = mid.children[0];
+      const core = mid.children[1];
+      mid.scale.x = 1 + Math.sin(time * 6 + i) * 0.15;
+      mid.scale.z = 1 + Math.sin(time * 7 + i) * 0.12;
+      inner.scale.x = 1 + Math.sin(time * 7 + i) * 0.1;
+      inner.scale.z = 1 + Math.sin(time * 9 + i * 1.7) * 0.08;
+      core.scale.x = 1 + Math.sin(time * 9 + i * 1.7) * 0.12;
+      core.scale.z = 1 + Math.sin(time * 6 + i * 1.3) * 0.1;
+      // keep layer scales non-negative against out-of-phase jitter
+      const clamp = (v) => Math.max(0.6, v);
+      mid.scale.x = clamp(mid.scale.x);
+      mid.scale.z = clamp(mid.scale.z);
+      inner.scale.x = clamp(inner.scale.x);
+      inner.scale.z = clamp(inner.scale.z);
+      core.scale.x = clamp(core.scale.x);
+      core.scale.z = clamp(core.scale.z);
+    }
+    // flame light flickers and tracks the first visible flame
+    if (firstVisible >= 0) {
+      const f = flames[firstVisible];
+      flameLight.position.set(f.position.x, 2.4, f.position.z);
+      flameLight.intensity = 5 + Math.sin(time * 11) * 1.5 + Math.sin(time * 23) * 0.8;
+    } else {
+      flameLight.intensity = 0;
     }
     // smoke drift upward + wrap
     for (let i = 0; i < SMOKE_COUNT; i += 1) {
