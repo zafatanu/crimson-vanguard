@@ -87,6 +87,7 @@ export function createScene(canvas) {
       hero.group.rotation.z = 0;
     }
     hero.palmLight.intensity = state.blasting ? 18 : 8;
+    hero.group.visible = (view === 'play');
 
     // --- Camera per view ---
     if (view === 'play') {
@@ -96,8 +97,8 @@ export function createScene(canvas) {
       camera.position.set(0, 14, 26);
       camera.lookAt(0, 0, 6);
     } else if (view === 'draft') {
-      camera.position.set(state.hero.x + 6, 5, state.hero.z + 10);
-      camera.lookAt(state.hero.x, 2, state.hero.z);
+      camera.position.set(0, 11, 25);
+      camera.lookAt(0, 1, 2);
     } else {
       // 'over' — dawn wide shot.
       camera.position.set(-8, 10, 22);
