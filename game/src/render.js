@@ -426,10 +426,10 @@ export function createRenderer(canvas) {
     if (featsDone.length) {
       let list = '';
       for (let i = 0; i < featsDone.length; i += 1) {
-        const f = FEATS[i] || {};
+        const f = FEATS[i];
         list += '<div style="margin-top:3px;font-size:12px;">' +
           '<span class="gold">' + (featsDone[i] ? '&#10003;' : '&#9675;') +
-          '</span> ' + esc(f.n || ('Feat ' + (i + 1))) +
+          '</span> ' + esc(typeof f === 'string' ? f : (f && f.n) || ('Feat ' + (i + 1))) +
           '<span class="chip" style="background:#17302A;color:#9FB5AC;margin-left:8px;font-size:10px;">' +
           (featsDone[i] ? 'EARNED' : 'LOCKED') + '</span></div>';
       }
