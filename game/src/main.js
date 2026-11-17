@@ -142,28 +142,28 @@ function clickDraft(x, y) {
 }
 
 function handleFrameActions(input) {
-  const a = input.takeActions();
-  if (a[ACTION_DIFFICULTY_1]) difficulty = 'ROOKIE';
-  if (a[ACTION_DIFFICULTY_2]) difficulty = 'HOTSHOT';
-  if (a[ACTION_DIFFICULTY_3]) difficulty = 'INFERNO';
-  if (a[ACTION_MUTE]) muted = !muted;
-  if (a[ACTION_SPEED]) speed = speed === 1 ? 4 : 1 | speed;
-  if (a[ACTION_RESTART]) startRun();
+  const { bits, click } = input.takeActions();
+  if (bits & ACTION_DIFFICULTY_1) difficulty = 'ROOKIE';
+  if (bits & ACTION_DIFFICULTY_2) difficulty = 'HOTSHOT';
+  if (bits & ACTION_DIFFICULTY_3) difficulty = 'INFERNO';
+  if (bits & ACTION_MUTE) muted = !muted;
+  if (bits & ACTION_SPEED) speed = speed === 1 ? 4 : 1;
+  if (bits & ACTION_RESTART) startRun();
 
   if (screen === SCREEN_TITLE) {
-    if (a[ACTION_CLICK]) titleClick(input.pointer.x, input.pointer.y);
-    if (a[ACTION_CONFIRM]) startRun();
+    if (bits & ACTION_CLICK) titleClick(click.x, click.y);
+    if (bits & ACTION_CONFIRM) startRun();
   } else if (screen === SCREEN_OVER) {
-    if (a[ACTION_CLICK]) {
-      const x = input.pointer.x;
+    if (bits & ACTION_CLICK) {
+      const x = click.x;
       if (x < 518) startRun();
       else if (x < 786) startRun(runSeed);
       else screen = SCREEN_TITLE;
     }
-    if (a[ACTION_CONFIRM]) startRun(runSeed);
+    if (bits & ACTION_CONFIRM) startRun(runSeed);
   } else if (screen === SCREEN_DRAFT) {
-    if (a[ACTION_CLICK]) clickDraft(input.pointer.x, input.pointer.y);
-    if (a[ACTION_CONFIRM]) {
+    if (bits & ACTION_CLICK) clickDraft(click.x, click.y);
+    if (bits & ACTION_CONFIRM) {
       if (!world.state.refit) world.chooseRefit(0);
       world.continueFlight();
     }
@@ -175,9 +175,9 @@ function handleFrameActions(input) {
     screen = SCREEN_DRAFT;
     pausedFromDraft = true;
   }
-  if (a[ACTION_PAUSE] && (screen === SCREEN_PLAY || screen === SCREEN_DRAFT)) {
+  if (bits & ACTION_PAUSE && (screen === SCREEN_PLAY || screen === SCREEN_DRAFT)) {
     screen = SCREEN_PAUSED;
-  } else if (a[ACTION_PAUSE] && screen === SCREEN_PAUSED) {
+  } else if (bits & ACTION_PAUSE && screen === SCREEN_PAUSED) {
     screen = pausedFromDraft ? SCREEN_DRAFT : SCREEN_PLAY;
   }
   if (world.state.outcome) finishRun();
