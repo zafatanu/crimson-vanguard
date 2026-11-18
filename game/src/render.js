@@ -128,10 +128,7 @@ export function createRenderer(canvas) {
       '</div>';
     const panel =
       '<div class="panel" style="position:absolute;top:16px;right:16px;padding:12px 16px;text-align:right;">' +
-      '<div class="label">SCORE</div><div class="big" style="font-size:24px;">' + fmt(state.score) + '</div>' +
-      '<div class="muted" style="margin-top:4px;">BEST ' + fmt(best) + '</div>' +
-      '<div class="gold" style="margin-top:2px;">CHAIN x' + chainN + '</div>' +
-      '<div class="label" style="margin-top:8px;">INCOMING</div>' +
+      '<div class="label">INCOMING</div>' +
       '<div class="big" style="font-size:15px;">' + esc(incoming) + '</div>' +
       '</div>';
     const tankPct = pct(state.tank);
@@ -140,6 +137,11 @@ export function createRenderer(canvas) {
       '<div class="hud-zone" style="position:absolute;left:16px;right:16px;bottom:16px;">' +
       '<div class="panel" style="padding:10px 16px;">' +
       '<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">' +
+      '<div style="min-width:130px;">' +
+      '<div class="label">SCORE</div>' +
+      '<div class="big" style="font-size:22px;">' + fmt(state.score) + '</div>' +
+      '<div class="muted" style="font-size:12px;">BEST ' + fmt(best) + ' &nbsp;·&nbsp; <span class="gold">CHAIN x' + chainN + '</span></div>' +
+      '</div>' +
       '<div style="min-width:150px;">' +
       '<div class="label" style="display:flex;justify-content:space-between;"><span>TANK</span><span class="cv-num">' + Math.round(state.tank) + '/100</span></div>' +
       '<div class="bar bar--big gold" style="width:150px;"><span style="width:' + tankPct + '%;"></span></div>' +

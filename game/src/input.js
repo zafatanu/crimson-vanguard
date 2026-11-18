@@ -22,6 +22,7 @@ export function createInput(canvas) {
   let pointerHeld = false; // mouse button 0 held
   let pointer = { x: 640, y: 400 };
   let click = null;
+  let keys = { up: false, down: false, left: false, right: false };
 
   // Fit-scale: map a client pointer onto the fixed 1280x800 logical grid, the
   // same letterbox math the renderer uses so steering and clicks line up.
@@ -40,7 +41,11 @@ export function createInput(canvas) {
     if (code === 'Space') {
       blastKey = true;
       if (!event.repeat) bits |= ACTION_CONFIRM;
-    } else if (code === 'Enter') { if (!event.repeat) bits |= ACTION_CONFIRM; }
+    } else if (code === 'KeyW' || code === 'ArrowUp') keys.up = true;
+    else if (code === 'KeyS' || code === 'ArrowDown') keys.down = true;
+    else if (code === 'KeyA' || code === 'ArrowLeft') keys.left = true;
+    else if (code === 'KeyD' || code === 'ArrowRight') keys.right = true;
+    else if (code === 'Enter') { if (!event.repeat) bits |= ACTION_CONFIRM; }
     else if (code === 'KeyP' || code === 'Escape') { if (!event.repeat) bits |= ACTION_PAUSE; }
     else if (code === 'ShiftLeft' || code === 'ShiftRight') boostKey = true;
     else if (code === 'KeyQ') { if (!event.repeat) bits |= ACTION_RETARDANT; }
@@ -56,9 +61,14 @@ export function createInput(canvas) {
   window.addEventListener('keyup', (event) => {
     if (event.code === 'Space') blastKey = false;
     else if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') boostKey = false;
+    else if (event.code === 'KeyW' || event.code === 'ArrowUp') keys.up = false;
+    else if (event.code === 'KeyS' || event.code === 'ArrowDown') keys.down = false;
+    else if (event.code === 'KeyA' || event.code === 'ArrowLeft') keys.left = false;
+    else if (event.code === 'KeyD' || event.code === 'ArrowRight') keys.right = false;
   });
   window.addEventListener('blur', () => {
     blastKey = false; boostKey = false; pointerHeld = false;
+    keys.up = keys.down = keys.left = keys.right = false;
   });
 
   canvas.addEventListener('pointerdown', (event) => {
@@ -95,6 +105,7 @@ export function createInput(canvas) {
     },
     isBlasting() { return blastKey || pointerHeld; },
     isBoosting() { return boostKey; },
+    keys,
     pointer() { return { x: pointer.x, y: pointer.y }; },
     worldTarget() {
       return { mx: (pointer.x - 640) * WORLD_PER_PX, mz: (pointer.y - 400) * WORLD_PER_PX };

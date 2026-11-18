@@ -107,6 +107,8 @@ function startRun(seed = runSeed) {
 }
 
 function finishRun() {
+  if (savedThisRun) return;
+  savedThisRun = true;
   const row = { score: world.state.score, mission: world.state.mission, result: world.state.outcome, seed: world.state.seed, time: Math.floor(world.state.runTime) };
   lastRuns.unshift(row);
   lastRuns = lastRuns.slice(0, 4);
@@ -114,7 +116,7 @@ function finishRun() {
   save = { best, lastRuns };
   persist();
   screen = SCREEN_OVER;
-  const win = world.state.outcome === 'win';
+  const win = world.state.outcome === 'WIN';
   announce(`${win ? 'THE CITY HOLDS' : 'THE FIRE TAKES THE CITY'} — season score ${world.state.score}.`);
 }
 
@@ -252,7 +254,7 @@ function step() {
     world.step(STEP * speed, {
       mx: target.mx,
       mz: target.mz,
-      keys: {},
+      keys: input.keys || {},
       blast: input.isBlasting(),
       boost: input.isBoosting(),
     });
