@@ -184,6 +184,12 @@ function clickDraft(x, y) {
     world.continueFlight();
     return;
   }
+  // TAKE OFF button (appears after a refit is chosen; in-viewport).
+  const takeOff = findButton('#hud .cta-btn', 'TAKE OFF');
+  if (takeOff && inside(hudRect(takeOff), x, y)) {
+    world.continueFlight();
+    return;
+  }
   // Fallback: below the fold continues the flight (TAKE OFF is off-viewport).
   if (y > 700) world.continueFlight();
 }
