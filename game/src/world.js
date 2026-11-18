@@ -177,6 +177,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     if (state.homesBurned === 0 && state.missionElapsed < row.seconds * 0.7) grade = 'S';
     else if (state.homesBurned <= 2) grade = 'A';
     state.missionGrades[state.mission - 1] = grade;
+    state.lastEvent = 'WON';
     refreshFeats();
     if (state.mission === 7) {
       refreshFeats();
