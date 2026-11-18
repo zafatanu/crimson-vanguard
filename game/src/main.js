@@ -231,6 +231,9 @@ function handleFrameActions(input) {
     screen = SCREEN_DRAFT;
     pausedFromDraft = true;
   }
+  if (screen === SCREEN_DRAFT && world.state.phase === 'fly') {
+    screen = SCREEN_PLAY;
+  }
   if (bits & ACTION_PAUSE && (screen === SCREEN_PLAY || screen === SCREEN_DRAFT)) {
     screen = SCREEN_PAUSED;
   } else if (bits & ACTION_PAUSE && screen === SCREEN_PAUSED) {
