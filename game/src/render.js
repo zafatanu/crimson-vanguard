@@ -445,7 +445,8 @@ export function createRenderer(canvas) {
     const win = state.outcome === 'WIN';
     const featsEarned = (Array.isArray(state.feats) ?
       state.feats.filter(function (v) { return !!v; }).length : 0);
-    const grade = (state.missionGrades && state.missionGrades[6]) || (win ? 'S' : 'B');
+    const rawGrade = state.missionGrades && state.missionGrades[6];
+    const grade = rawGrade && rawGrade !== 'pending' ? rawGrade : null;
     const newBest = typeof best === 'number' && state.score > best;
     const headline = win ? 'THE CITY HOLDS' : 'THE FIRE TAKES THE CITY';
     const sub = win
@@ -456,14 +457,14 @@ export function createRenderer(canvas) {
     const badgeRing = win
       ? ''
       : ';border-color:var(--red-text);color:var(--red-text)';
-    const badge =
+    const badge = grade ?
       '<div style="width:120px;height:120px;margin:0 auto;' +
       'background:radial-gradient(circle,var(--gold) 0 30px,var(--cta) 30px 44px,transparent 44px);' +
       'border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
       '<div class="cv-grade-badge' +
       (grade === 'A' ? ' cv-grade-badge--a' : grade === 'B' ? ' cv-grade-badge--b' : '') +
       '" style="' + (win ? '' : 'border-color:var(--red-text);color:var(--red-text);') + '">' +
-      esc(grade) + '</div></div>';
+      esc(grade) + '</div></div>' : '';
 
     // CARD: 560px wide, panel --panel-3, gold 2px border, centred.
     let card =
