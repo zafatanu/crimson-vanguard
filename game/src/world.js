@@ -37,7 +37,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     chain: 0, bestChain: 0, combo: 1.00, flamesDoused: 0, scoops: 0, dropsOnTarget: 0,
     dropsTotal: 0, homesSaved: 0, homesBurned: 0, homesTotal: 0, cores: [], flames: [],
     wisps: [], rainFront: 0, bossName: '', bossHp: 0, bossMaxHp: 0, outcome: '',
-    ticker: '', lastEvent: '', refits: [], options: [], fork: null, forksTaken: [],
+    lastMissionWon: false, ticker: '', lastEvent: '', refits: [], options: [], fork: null, forksTaken: [],
     feats: Array(10).fill(false), stats: null, speed: HERO_SPEED, muted: false,
     hero: { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0 }, blasting: false,
     chargeZone: null, towers: [{ x: -14, z: -8, r: 3.5 }, { x: 12, z: -10, r: 3.5 }, { x: 0, z: 12, r: 3.5 }],
@@ -178,6 +178,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     else if (state.homesBurned <= 2) grade = 'A';
     state.missionGrades[state.mission - 1] = grade;
     state.lastEvent = 'WON';
+    state.lastMissionWon = true;
     refreshFeats();
     if (state.mission === 7) {
       refreshFeats();
@@ -219,6 +220,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     } else if (!win) {
       // mission lost -> grade B, move on with homesBurned += 2.
       state.missionGrades[state.mission - 1] = 'B';
+      state.lastMissionWon = false;
       state.homesBurned += 2;
       if (state.homesBurned >= 6) {
         state.outcome = 'LOSS';
@@ -495,6 +497,7 @@ export function createWorld(initialRandom, initialSeed = 86) {
     state.bossHp = 0;
     state.bossMaxHp = 0;
     state.outcome = '';
+    state.lastMissionWon = false;
     state.ticker = '';
     state.lastEvent = '';
     state.refits = [];

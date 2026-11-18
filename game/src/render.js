@@ -333,7 +333,7 @@ export function createRenderer(canvas) {
   function drawDraft(state, best, ticker) {
     const m = MISSIONS[state.mission - 1];
     const mName = m ? m.name : 'Mission ' + state.mission;
-    const win = state.outcome === 'WIN' || state.lastEvent === 'WON';
+    const win = state.outcome === 'WIN' || state.lastMissionWon === true;
     const grade = (state.missionGrades && state.missionGrades[state.mission - 1]) || (win ? 'S' : 'B');
     // Header row: left = kicker + district (cream, T2), right = grade badge.
     const gradeBadge =
